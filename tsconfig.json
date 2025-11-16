@@ -14,9 +14,7 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "noEmit": true,
-        "esModuleInterop": true,
-        "strict": true,
-        "noFallthroughCasesInSwitch": true
+        "strict": true
     },
     "include": [
         "src"

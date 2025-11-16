@@ -1,25 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-    Moon,
-    Sun,
-    Mail,
-    Github,
-    Linkedin,
-    ExternalLink,
-    Download,
-    Volume2,
-    VolumeX,
-} from "lucide-react";
-import { LineChart, Line } from "recharts";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Mail, Github, Linkedin, ExternalLink, Download } from "lucide-react";
 
-// --- Profile / Data ----------------------------------------------------------
+/* ============================== Constants =============================== */
+const INTRO_MS = 6500; // ~6.5s (4.5s + 2s)
+const FADE_MS = 3000; // crossfade duration in ms (3s)
+
 const PROFILE = {
     name: "Vishnu Nair",
-    role: "Software Engineer • Systems & Data (CS @ Cornell ’26)",
+    role: "Software Engineer",
     tagline:
         "I build reliable systems and developer tools — low-latency services, tidy APIs, and data platforms that ship.",
     email: "nairvishnumail@gmail.com",
-    location: "Ithaca, NY",
+    location: "Fremont, CA",
     socials: {
         github: "https://github.com/vvnu0",
         linkedin: "https://linkedin.com/in/vishnunair0/",
@@ -28,7 +20,7 @@ const PROFILE = {
         src: "/WIN_20251019_18_31_08_Pro.mp4",
         poster: "/intro-poster.jpg", // optional placeholder image
     },
-};
+} as const;
 
 const PROJECTS = [
     {
@@ -67,37 +59,164 @@ const PROJECTS = [
         metrics: [1, 3, 5, 8, 13, 21, 34, 29, 31, 28, 36, 40],
         outcome: ">1.2M ops/s on M2 — 99p latency under 4ms",
     },
-];
-
-const EXPERIENCE = [
-    {
-        company: "Cornell Data Science",
-        role: "SWE/ML Officer",
-        time: "2024–Present",
-        bullets: [
-            "Shipped services and tooling for production ML; focused on reliability and performance.",
-            "Partnered with Sandia National Laboratories and Millennium on deployment workflows.",
-        ],
-    },
-    {
-        company: "NASA / MIT Lincoln Lab (Projects)",
-        role: "Research & Engineering",
-        time: "2023–2024",
-        bullets: [
-            "Prototyped ML and data systems for ecological monitoring and safety protocols.",
-            "Built pipelines and dashboards to turn raw telemetry into decisions.",
-        ],
-    },
-];
+] as const;
 
 const LINKS = [
     { label: "Resume", href: "/resume.pdf", icon: Download },
     { label: "GitHub", href: PROFILE.socials.github, icon: Github },
     { label: "LinkedIn", href: PROFILE.socials.linkedin, icon: Linkedin },
     { label: "Email", href: `mailto:${PROFILE.email}`, icon: Mail },
-];
+] as const;
 
-// --- Small UI bits ----------------------------------------------------------
+const NL =
+    "text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition";
+
+/* ============================== Utilities ================================= */
+const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+
+function ensureLinkOnce(href: string, key: string) {
+    if (!isBrowser) return;
+    if (!document.querySelector(`link[data-key="${key}"]`)) {
+        const link = document.createElement("link");
+        link.setAttribute("data-key", key);
+        link.rel = "stylesheet";
+        link.href = href;
+        document.head.appendChild(link);
+    }
+}
+
+function ensureScriptOnce(src: string, key: string) {
+    return new Promise<void>((resolve) => {
+        if (!isBrowser) return resolve();
+        if ((window as any)[key]) return resolve();
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.onload = () => {
+            (window as any)[key] = true;
+            resolve();
+        };
+        document.body.appendChild(s);
+    });
+}
+
+/* ============================== Scramble Title ============================= */
+function ScrambleTitle({
+    text,
+    start = false,
+    className = "",
+}: {
+    text: string;
+    start?: boolean; // begin scrambling when this flips true
+    className?: string;
+}) {
+    const [out, setOut] = useState<string>(text.replace(/[^ ]/g, " "));
+    const raf = useRef<number | null>(null);
+    const running = useRef(false);
+    const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{}<>/?|";
+
+    // Slower schedule for longer reveal
+    const buildSchedule = useCallback((len: number) => {
+        const now = performance.now();
+        const BASE = 1800;
+        const STEP = 120;
+        const JITTER = 900;
+        return Array.from({ length: len }, (_, i) => now + BASE + i * STEP + Math.random() * JITTER);
+    }, []);
+
+    const play = useCallback(() => {
+        if (running.current) return;
+        running.current = true;
+        const target = text;
+        const locks = buildSchedule(target.length);
+
+        const tick = (t: number) => {
+            let done = true;
+            let buf = "";
+            for (let i = 0; i < target.length; i++) {
+                const ch = target[i];
+                if (ch === " ") {
+                    buf += " ";
+                    continue;
+                }
+                if (t >= locks[i]) buf += ch;
+                else {
+                    done = false;
+                    buf += chars[(Math.random() * chars.length) | 0];
+                }
+            }
+            setOut(buf);
+            if (!done) raf.current = requestAnimationFrame(tick);
+            else {
+                setOut(target);
+                running.current = false;
+            }
+        };
+
+        if (raf.current) cancelAnimationFrame(raf.current);
+        raf.current = requestAnimationFrame(tick);
+    }, [text, buildSchedule, chars]);
+
+    useEffect(() => {
+        if (start) play();
+        return () => {
+            if (raf.current) cancelAnimationFrame(raf.current);
+        };
+    }, [start, play]);
+
+    return (
+        <span
+            className={`cursor-default select-none ${className}`}
+            onMouseEnter={play}
+            onClick={play}
+            aria-label={text}
+        >
+            {out}
+        </span>
+    );
+}
+
+/* =============================== Intro Overlay ============================= */
+function IntroOverlay({ onDismiss, fading }: { onDismiss: () => void; fading: boolean }) {
+    return (
+        <div
+            className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black intro-overlay ${fading ? "fade-out" : ""
+                }`}
+            onClick={onDismiss}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onDismiss()}
+            aria-label="Dismiss intro"
+            data-testid="intro-overlay"
+        >
+            <style>{`
+        @import url('https://fonts.googleapis.com/css?family=Lato:300,400,700|Dosis:200,400,600');
+        .intro-overlay { opacity: 1; transition: opacity ${FADE_MS}ms ease; }
+        .intro-overlay.fade-out { opacity: 0; }
+        .intro-title {
+          font-family: Dosis, sans-serif; font-weight: 200; position: absolute; text-align: center;
+          color: #fff; top: 50%; width: 100%; margin-top: -55px; text-transform: uppercase;
+          letter-spacing: 1px; transform-style: preserve-3d; transform: translate3d(0,0,0); opacity: 0;
+          animation: introAnim 3.2s ease-out forwards 1s;
+        }
+        .intro-title strong { display: block; font-weight: 400; }
+        @keyframes introAnim {
+          0% { text-shadow: 0 0 50px #fff; letter-spacing: 80px; opacity: 0; transform: rotateY(-90deg); }
+          50% { text-shadow: 0 0 1px #fff; opacity: 0.8; transform: rotateY(0deg); }
+          75% { text-shadow: 0 0 1px #fff; opacity: 0.8; transform: rotateY(0deg) translateZ(60px); }
+          100% { text-shadow: 0 0 1px #fff; opacity: 0.8; letter-spacing: 8px; transform: rotateY(0deg) translateZ(100px); }
+        }
+      `}</style>
+
+            <h1 className="intro-title">
+                Welcome <strong>stranger</strong>
+            </h1>
+        </div>
+    );
+}
+
+/* =============================== Small UI bits ============================= */
 function Badge({ children }: { children: React.ReactNode }) {
     return (
         <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/40 dark:supports-[backdrop-filter]:bg-white/5 border-zinc-200 text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
@@ -124,11 +243,7 @@ function Section({
                     <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                         {title}
                     </h2>
-                    {hint ? (
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                            {hint}
-                        </span>
-                    ) : null}
+                    {hint ? <span className="text-xs text-zinc-500 dark:text-zinc-400">{hint}</span> : null}
                 </div>
                 {children}
             </div>
@@ -136,12 +251,59 @@ function Section({
     );
 }
 
+// Lightweight SVG sparkline (no recharts needed)
 function Sparkline({ values }: { values: number[] }) {
-    const data = useMemo(() => values.map((v, i) => ({ i, v })), [values]);
+    const points = useMemo(() => {
+        if (!values || values.length === 0) return "";
+
+        const width = 120;
+        const height = 40;
+        const padX = 2;
+        const padY = 2;
+
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const span = max - min || 1; // avoid divide-by-zero
+        const n = values.length;
+
+        return values
+            .map((v, i) => {
+                const t = n === 1 ? 0.5 : i / (n - 1); // single point centered
+                const x = padX + t * (width - 2 * padX);
+                const norm = (v - min) / span;
+                const y = height - padY - norm * (height - 2 * padY);
+                return `${x},${y}`;
+            })
+            .join(" ");
+    }, [values]);
+
+    if (!points) {
+        return (
+            <svg width={120} height={40} aria-label="flat sparkline">
+                <line
+                    x1={2}
+                    y1={20}
+                    x2={118}
+                    y2={20}
+                    stroke="currentColor"
+                    strokeWidth={1}
+                    strokeOpacity={0.3}
+                />
+            </svg>
+        );
+    }
+
     return (
-        <LineChart width={120} height={40} data={data} aria-label="small trend chart">
-            <Line type="monotone" dataKey="v" strokeWidth={2} dot={false} />
-        </LineChart>
+        <svg width={120} height={40} viewBox="0 0 120 40" aria-label="small trend chart">
+            <polyline
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                points={points}
+            />
+        </svg>
     );
 }
 
@@ -164,14 +326,10 @@ function ProjectCard({ p }: { p: (typeof PROJECTS)[number] }) {
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                        <h3 className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                            {p.title}
-                        </h3>
+                        <h3 className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-100">{p.title}</h3>
                         <Badge>{p.year}</Badge>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        {p.description}
-                    </p>
+                    <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{p.description}</p>
                     <div className="mt-3 flex items-center justify-between">
                         <div className="flex flex-wrap gap-1.5">
                             {p.stack.map((s) => (
@@ -180,9 +338,7 @@ function ProjectCard({ p }: { p: (typeof PROJECTS)[number] }) {
                         </div>
                         <Sparkline values={p.metrics} />
                     </div>
-                    <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
-                        {p.outcome}
-                    </p>
+                    <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">{p.outcome}</p>
                 </div>
             </div>
             <ExternalLink
@@ -193,44 +349,1690 @@ function ProjectCard({ p }: { p: (typeof PROJECTS)[number] }) {
     );
 }
 
-// --- Page -------------------------------------------------------------------
-export default function App() {
-    const [dark, setDark] = useState(true);
-    const [soundOn, setSoundOn] = useState(false);
-    const vref = useRef<HTMLVideoElement | null>(null);
-
-    // Lightweight sanity checks (acts like quick tests in dev)
+/* ============================== Music Player =============================== */
+function MusicPlayer() {
     useEffect(() => {
-        console.assert(
-            Array.isArray(PROJECTS) && PROJECTS.length > 0,
-            "Expected at least one project"
+        if (!isBrowser) return;
+
+        // Load Font Awesome + jQuery once
+        ensureLinkOnce(
+            "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css",
+            "fa5-css"
         );
-        const required = [
-            "title",
-            "description",
-            "year",
-            "stack",
-            "image",
-            "link",
-            "metrics",
-            "outcome",
-        ];
-        console.assert(
-            required.every((k) => k in PROJECTS[0]),
-            "Project missing required keys"
-        );
-        console.assert(
-            LINKS.every((l) => (l as any).label && (l as any).href),
-            "Each link needs label and href"
-        );
+        let disposed = false;
+        let buffInterval: any = null;
+        let audio: HTMLAudioElement | null = null;
+        let cleanupFn: (() => void) | void;
+
+        const win = window as any;
+        // Prevent multiple simultaneous initializations (StrictMode / remounts)
+        if (win.__vvnu0_music_player_initialized) return;
+        win.__vvnu0_music_player_initialized = true;
+
+        const init = async () => {
+            await ensureScriptOnce(
+                "https://code.jquery.com/jquery-3.7.1.min.js",
+                "jquery-3-7-1-loaded"
+            );
+            if (disposed) return;
+
+            const $ = (window as any).jQuery || (window as any).$;
+            if (!$) return;
+
+            const playerTrack = $("#player-track");
+            const bgArtwork = $("#player-bg-artwork");
+            const albumName = $("#album-name");
+            const trackName = $("#track-name");
+            const albumArt = $("#album-art");
+            const sArea = $("#seek-bar-container");
+            const seekBar = $("#seek-bar");
+            const trackTime = $("#track-time");
+            const seekTime = $("#seek-time");
+            const sHover = $("#s-hover");
+            const playPauseButton = $("#play-pause-button");
+            const tProgress = $("#current-time");
+            const tTime = $("#track-length");
+            const playPreviousTrackButton = $("#play-previous");
+            const playNextTrackButton = $("#play-next");
+
+            const albums = [
+                "Tip Toe",
+                "Harvey",
+                "Invincible",
+                "Sunflower",
+                "Mona Lisa",
+            ];
+            const trackNames = [
+                "HYBS - Tip Toe",
+                "Her's - Harvey",
+                "OneRepublic - Invincible",
+                "Post Malone - Sunflower",
+                "Val Fritz & Peter Fenn - Mona Lisa",
+            ];
+            const albumArtworks = ["_1", "_2", "_3", "_4", "_5"];
+            const trackUrl = [
+                "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/TipToe.mp3",
+                "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/Harvey.mp3",
+                "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/Invincible.mp3",
+                "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/Sunflower.mp3",
+                "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/MonaLisa.mp3",
+            ];
+
+            let bgArtworkUrl: string | undefined;
+            let i = playPauseButton.find("i");
+            let seekT = 0;
+            let seekLoc = 0;
+            let seekBarPos: any;
+            let cM = 0;
+            let ctMinutes: any;
+            let ctSeconds: any;
+            let curMinutes: any;
+            let curSeconds: any;
+            let durMinutes: any;
+            let durSeconds: any;
+            let playProgress = 0;
+            let bTime: any;
+            let nTime: any = 0;
+            let tFlag = false;
+            let currIndex = -1;
+            let currAlbum: string;
+            let currTrackName: string;
+            let currArtwork: string;
+
+            const playPause = () => {
+                if (!audio) return;
+                setTimeout(() => {
+                    if (!audio) return;
+                    if (audio.paused) {
+                        playerTrack.addClass("active");
+                        albumArt.addClass("active");
+                        checkBuffering();
+                        i.attr("class", "fas fa-pause");
+                        audio.play();
+                    } else {
+                        playerTrack.removeClass("active");
+                        albumArt.removeClass("active");
+                        clearInterval(buffInterval);
+                        albumArt.removeClass("buffering");
+                        i.attr("class", "fas fa-play");
+                        audio.pause();
+                    }
+                }, 300);
+            };
+
+            const showHover = (event: MouseEvent) => {
+                if (!audio || !audio.duration) return;
+                seekBarPos = sArea.offset();
+                seekT = event.clientX - seekBarPos.left;
+                seekLoc = audio.duration * (seekT / sArea.outerWidth());
+
+                sHover.width(seekT);
+
+                cM = seekLoc / 60;
+
+                ctMinutes = Math.floor(cM);
+                ctSeconds = Math.floor(seekLoc - ctMinutes * 60);
+
+                if (ctMinutes < 0 || ctSeconds < 0) return;
+
+                if (ctMinutes < 10) ctMinutes = "0" + ctMinutes;
+                if (ctSeconds < 10) ctSeconds = "0" + ctSeconds;
+
+                if (isNaN(ctMinutes) || isNaN(ctSeconds)) seekTime.text("--:--");
+                else seekTime.text(ctMinutes + ":" + ctSeconds);
+
+                seekTime.css({ left: seekT, "margin-left": "-21px" }).fadeIn(0);
+            };
+
+            const hideHover = () => {
+                sHover.width(0);
+                seekTime.text("00:00").css({ left: "0px", "margin-left": "0px" }).fadeOut(0);
+            };
+
+            const playFromClickedPos = () => {
+                if (!audio) return;
+                audio.currentTime = seekLoc;
+                seekBar.width(seekT);
+                hideHover();
+            };
+
+            const updateCurrTime = () => {
+                if (!audio || !audio.duration) return;
+                nTime = new Date();
+                nTime = nTime.getTime();
+
+                if (!tFlag) {
+                    tFlag = true;
+                    trackTime.addClass("active");
+                }
+
+                curMinutes = Math.floor(audio.currentTime / 60);
+                curSeconds = Math.floor(audio.currentTime - curMinutes * 60);
+
+                durMinutes = Math.floor(audio.duration / 60);
+                durSeconds = Math.floor(audio.duration - durMinutes * 60);
+
+                playProgress = (audio.currentTime / audio.duration) * 100;
+
+                if (curMinutes < 10) curMinutes = "0" + curMinutes;
+                if (curSeconds < 10) curSeconds = "0" + curSeconds;
+
+                if (durMinutes < 10) durMinutes = "0" + durMinutes;
+                if (durSeconds < 10) durSeconds = "0" + durSeconds;
+
+                if (isNaN(curMinutes) || isNaN(curSeconds)) tProgress.text("00:00");
+                else tProgress.text(curMinutes + ":" + curSeconds);
+
+                if (isNaN(durMinutes) || isNaN(durSeconds)) tTime.text("00:00");
+                else tTime.text(durMinutes + ":" + durSeconds);
+
+                if (
+                    isNaN(curMinutes) ||
+                    isNaN(curSeconds) ||
+                    isNaN(durMinutes) ||
+                    isNaN(durSeconds)
+                )
+                    trackTime.removeClass("active");
+                else trackTime.addClass("active");
+
+                seekBar.width(playProgress + "%");
+
+                if (playProgress === 100) {
+                    i.attr("class", "fa fa-play");
+                    seekBar.width(0);
+                    tProgress.text("00:00");
+                    albumArt.removeClass("buffering").removeClass("active");
+                    clearInterval(buffInterval);
+                }
+            };
+
+            const checkBuffering = () => {
+                clearInterval(buffInterval);
+                buffInterval = setInterval(() => {
+                    if (nTime === 0 || bTime - nTime > 1000) albumArt.addClass("buffering");
+                    else albumArt.removeClass("buffering");
+
+                    bTime = new Date();
+                    bTime = bTime.getTime();
+                }, 100);
+            };
+
+            const selectTrack = (flag: number) => {
+                if (flag === 0 || flag === 1) ++currIndex;
+                else --currIndex;
+
+                if (currIndex > -1 && currIndex < albumArtworks.length) {
+                    if (flag === 0) i.attr("class", "fa fa-play");
+                    else {
+                        albumArt.removeClass("buffering");
+                        i.attr("class", "fa fa-pause");
+                    }
+
+                    seekBar.width(0);
+                    trackTime.removeClass("active");
+                    tProgress.text("00:00");
+                    tTime.text("00:00");
+
+                    currAlbum = albums[currIndex];
+                    currTrackName = trackNames[currIndex];
+                    currArtwork = albumArtworks[currIndex];
+
+                    if (!audio) audio = new Audio();
+                    audio.src = trackUrl[currIndex];
+
+                    nTime = 0;
+                    bTime = new Date();
+                    bTime = bTime.getTime();
+
+                    if (flag !== 0) {
+                        audio.play();
+                        playerTrack.addClass("active");
+                        albumArt.addClass("active");
+
+                        clearInterval(buffInterval);
+                        checkBuffering();
+                    }
+
+                    albumName.text(currAlbum);
+                    trackName.text(currTrackName);
+                    albumArt.find("img.active").removeClass("active");
+                    ("#" + currArtwork) && (document.getElementById(currArtwork)?.classList.add("active"));
+
+                    bgArtworkUrl = (document.getElementById(currArtwork) as HTMLImageElement | null)?.src;
+
+                    if (bgArtworkUrl) {
+                        bgArtwork.css({ "background-image": "url(" + bgArtworkUrl + ")" });
+                    }
+                } else {
+                    if (flag === 0 || flag === 1) --currIndex;
+                    else ++currIndex;
+                }
+            };
+
+            const initPlayer = () => {
+                audio = new Audio();
+                selectTrack(0);
+                if (!audio) return;
+                audio.loop = false;
+
+                playPauseButton.on("click", playPause);
+                sArea.on("mousemove", (e: any) => showHover(e.originalEvent));
+                sArea.on("mouseout", hideHover);
+                sArea.on("click", playFromClickedPos);
+                $(audio).on("timeupdate", updateCurrTime);
+                playPreviousTrackButton.on("click", () => selectTrack(-1));
+                playNextTrackButton.on("click", () => selectTrack(1));
+            };
+
+            initPlayer();
+
+            // cleanup function returned to caller
+            return () => {
+                if (audio) {
+                    (audio as any).pause?.();
+                    $(audio).off("timeupdate", updateCurrTime);
+                }
+                playPauseButton.off("click", playPause);
+                sArea.off("mousemove");
+                sArea.off("mouseout");
+                sArea.off("click");
+                playPreviousTrackButton.off("click");
+                playNextTrackButton.off("click");
+                clearInterval(buffInterval);
+            };
+        };
+
+        // Run init and capture its cleanup function. If init finishes after
+        // this effect has been torn down we'll call the cleanup immediately.
+        (async () => {
+            const c = await init();
+            if (disposed) {
+                if (c) c();
+                win.__vvnu0_music_player_initialized = false;
+            } else {
+                cleanupFn = c;
+            }
+        })();
+
+        return () => {
+            disposed = true;
+            clearInterval(buffInterval);
+            if (cleanupFn) {
+                try {
+                    cleanupFn();
+                } catch (e) {
+                    // swallow cleanup errors
+                }
+            } else {
+                // if init hasn't produced a cleanup yet, allow future inits
+                win.__vvnu0_music_player_initialized = false;
+            }
+        };
     }, []);
 
+    return (
+        <div className="relative flex w-full justify-center md:justify-end">
+            <style>{`
+        #player-container {
+          width: 430px;
+          height: 100px;
+          margin: 0 auto;
+        }
+        #player-bg-artwork,
+        #player-bg-layer {
+          display: none !important;
+        }
+        #player {
+          position: relative;
+          height: 100%;
+          z-index: 3;
+        }
+        #player-track {
+          position: absolute;
+          top: 0;
+          right: 15px;
+          left: 15px;
+          padding: 13px 22px 10px 184px;
+          background-color: #000;
+          border-radius: 15px 15px 0 0;
+          transition: 0.3s ease top;
+          z-index: 1;
+        }
+        #player-track.active {
+          top: -92px;
+        }
+        #album-name {
+          color: #ffffff;
+          font-size: 17px;
+          font-weight: bold;
+        }
+        #track-name {
+          color: #dddddd;
+          font-size: 13px;
+          margin: 2px 0 13px 0;
+        }
+        #track-time {
+          height: 12px;
+          margin-bottom: 3px;
+          overflow: hidden;
+        }
+        #current-time {
+          float: left;
+        }
+        #track-length {
+          float: right;
+        }
+        #current-time,
+        #track-length {
+          color: transparent;
+          font-size: 11px;
+          background-color: #ffe8ee;
+          border-radius: 10px;
+          transition: 0.3s ease all;
+        }
+        #track-time.active #current-time,
+        #track-time.active #track-length {
+          color: #f86d92;
+          background-color: transparent;
+        }
+        #seek-bar-container,
+        #seek-bar {
+          position: relative;
+          height: 4px;
+          border-radius: 4px;
+        }
+        #seek-bar-container {
+          background-color: #ffe8ee;
+          cursor: pointer;
+        }
+        #seek-time {
+          position: absolute;
+          top: -29px;
+          color: #fff;
+          font-size: 12px;
+          white-space: pre;
+          padding: 5px 6px;
+          border-radius: 4px;
+          display: none;
+        }
+        #s-hover {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          opacity: 0.2;
+          z-index: 2;
+        }
+        #seek-time,
+        #s-hover {
+          background-color: #3b3d50;
+        }
+        #seek-bar {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          width: 0;
+          background-color: #fd6d94;
+          transition: 0.2s ease width;
+          z-index: 1;
+        }
+        #player-content {
+          position: relative;
+          height: 100%;
+          background-color: #000;
+          border: 2px solid #fff;
+          box-shadow: 0 30px 80px rgba(255, 255, 255, 0.25);
+          border-radius: 15px;
+          z-index: 2;
+        }
+        #album-art {
+          position: absolute;
+          top: -40px;
+          width: 115px;
+          height: 115px;
+          margin-left: 40px;
+          transform: rotateZ(0);
+          transition: 0.3s ease all;
+          box-shadow: 0 0 0 10px #fff;
+          border-radius: 50%;
+          overflow: hidden;
+        }
+        #album-art.active {
+          top: -60px;
+          box-shadow: 0 0 0 4px #fff7f7, 0 30px 50px -15px rgba(255, 255, 255, 0.35);
+        }
+        #album-art:before {
+          content: "";
+          position: absolute;
+          top: 50%;
+          right: 0;
+          left: 0;
+          width: 20px;
+          height: 20px;
+          margin: -10px auto 0 auto;
+          background-color: #d6dee7;
+          border-radius: 50%;
+          box-shadow: inset 0 0 0 2px #fff;
+          z-index: 2;
+        }
+        #album-art img {
+          display: block;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          z-index: -1;
+        }
+        #album-art img.active {
+          opacity: 1;
+          z-index: 1;
+        }
+        #album-art.active img.active {
+          z-index: 1;
+          animation: rotateAlbumArt 3s linear 0s infinite forwards;
+        }
+        @keyframes rotateAlbumArt {
+          0% {
+            transform: rotateZ(0);
+          }
+          100% {
+            transform: rotateZ(360deg);
+          }
+        }
+        #buffer-box {
+          position: absolute;
+          top: 50%;
+          right: 0;
+          left: 0;
+          height: 13px;
+          color: #1f1f1f;
+          font-size: 13px;
+          text-align: center;
+          font-weight: bold;
+          line-height: 1;
+          padding: 6px;
+          margin: -12px auto 0 auto;
+          background-color: rgba(255, 255, 255, 0.19);
+          opacity: 0;
+          z-index: 2;
+        }
+        #album-art img,
+        #buffer-box {
+          transition: 0.1s linear all;
+        }
+        #album-art.buffering img {
+          opacity: 0.25;
+        }
+        #album-art.buffering img.active {
+          opacity: 0.8;
+          filter: blur(2px);
+        }
+        #album-art.buffering #buffer-box {
+          opacity: 1;
+        }
+        #player-controls {
+          width: 250px;
+          height: 100%;
+          margin: 0 5px 0 141px;
+          float: right;
+          overflow: hidden;
+        }
+        .control {
+        width: 33.333%;
+        float: left;
+        padding: 12px 0;
+
+        /* center the button inside each column */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        }
+
+        .button {
+        /* make the visual square itself centered and even */
+        width: 72px;
+        height: 72px;
+        padding: 0;
+        margin: 0 auto;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        background-color: #111;
+        border-radius: 16px;
+        cursor: pointer;
+        }
+
+        .button i {
+        display: block;
+        color: #ffffff;
+        font-size: 26px;
+        line-height: 1;
+        text-align: center;
+        }
+        .button,
+        .button i {
+          transition: 0.2s ease all;
+        }
+        .button:hover {
+          background-color: #333;
+        }
+        .button:hover i {
+          color: #fff;
+        }
+      `}</style>
+
+            <div id="player-container">
+                <div id="player-bg-artwork"></div>
+                <div id="player-bg-layer"></div>
+                <div id="player">
+                    <div id="player-track">
+                        <div id="album-name"></div>
+                        <div id="track-name"></div>
+                        <div id="track-time">
+                            <div id="current-time"></div>
+                            <div id="track-length"></div>
+                        </div>
+                        <div id="seek-bar-container">
+                            <div id="seek-time"></div>
+                            <div id="s-hover"></div>
+                            <div id="seek-bar"></div>
+                        </div>
+                    </div>
+                    <div id="player-content">
+                        <div id="album-art">
+                            <img
+                                src="https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/tiptoe.jpeg"
+                                className="active"
+                                id="_1"
+                            />
+                            <img
+                                src="https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/Harvey.jpg"
+                                id="_2"
+                            />
+                            <img
+                                src="https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/Invincible.jpg"
+                                id="_3"
+                            />
+                            <img
+                                src="https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/sunflower.jpeg"
+                                id="_4"
+                            />
+                            <img
+                                src="https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/MonaLisa.jpeg"
+                                id="_5"
+                            />
+                            <div id="buffer-box">Buffering ...</div>
+                        </div>
+                        <div id="player-controls">
+                            <div className="control">
+                                <div className="button" id="play-previous">
+                                    <i className="fas fa-backward"></i>
+                                </div>
+                            </div>
+                            <div className="control">
+                                <div className="button" id="play-pause-button">
+                                    <i className="fas fa-play"></i>
+                                </div>
+                            </div>
+                            <div className="control">
+                                <div className="button" id="play-next">
+                                    <i className="fas fa-forward"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ============================== Companies Ticker =========================== */
+function CompaniesTicker() {
     useEffect(() => {
-        if (vref.current) vref.current.muted = !soundOn;
-    }, [soundOn]);
+        if (!isBrowser) return;
+
+        // Fonts & Swiper styles (once)
+        ensureLinkOnce(
+            "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css",
+            "swiper-css"
+        );
+        ensureLinkOnce(
+            "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap",
+            "fonts-bebas-inter"
+        );
+        ensureLinkOnce(
+            "https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=IBM+Plex+Sans:wght@600;700&family=Oswald:wght@600;700&family=EB+Garamond:wght@600;700&display=swap",
+            "fonts-brand-fallbacks"
+        );
+
+        let disposed = false;
+        const sliders: any[] = [];
+
+        const init = async () => {
+            await ensureScriptOnce(
+                "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js",
+                "swiper-js-loaded"
+            );
+            if (disposed) return;
+            const Sw = (window as any).Swiper;
+            if (!Sw) return;
+
+            const isDesktop = () => window.innerWidth > 767.9;
+            let gap = isDesktop() ? 0.0285 * window.innerWidth : 15;
+
+            ["#horizontal-ticker-rtl", "#horizontal-ticker-ltr"].forEach((query, index) => {
+                const el = document.querySelector(query);
+                if (!el) return;
+                const inst = new Sw(el, {
+                    loop: true,
+                    slidesPerView: "auto",
+                    spaceBetween: gap,
+                    speed: 8000,
+                    allowTouchMove: false,
+                    autoplay: {
+                        delay: 0,
+                        reverseDirection: index === 0,
+                        disableOnInteraction: false,
+                    },
+                });
+                sliders.push(inst);
+            });
+
+            const onResize = () => {
+                gap = isDesktop() ? 0.0285 * window.innerWidth : 15;
+                sliders.forEach((slider) => {
+                    slider.params.spaceBetween = gap;
+                    slider.update();
+                });
+            };
+            window.addEventListener("resize", onResize);
+
+            const cleanup = () => window.removeEventListener("resize", onResize);
+            (sliders as any)._cleanupResize = cleanup;
+
+            // Brand styles / fonts
+            const brandStyles: Record<string, { bg: string; text: string }> = {
+                amazon: { bg: "#CC7A00", text: "#111111" },
+                coinbase: { bg: "#003BB3", text: "#FFFFFF" },
+                NASA: { bg: "#083071", text: "#FFFFFF" },
+                "MIT Lincoln Lab": { bg: "#EDEDED", text: "#002B52" },
+                "Cornell Data Science": { bg: "#5A2FA0", text: "#000000" },
+                "Beats by Dre": { bg: "#B81831", text: "#000000" },
+                "Millennium Management": { bg: "#000000", text: "#0026C2" },
+                "NumberOne AI": { bg: "#0B1220", text: "#FFFFFF" },
+            };
+
+            const companyFonts: Record<string, string> = {
+                "Beats by Dre": "'Abeat by Kai', Zarautz, Opificio, Oswald, Montserrat, Inter, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif",
+                amazon:
+                    "'Golger Sans Serif', Montserrat, Inter, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif",
+                coinbase:
+                    "'Henderson Sans', 'IBM Plex Sans', Inter, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif",
+                NASA: "'Henderson Sans', 'IBM Plex Sans', Inter, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif",
+                "Millennium Management":
+                    "'Henderson Sans', 'IBM Plex Sans', Inter, system-ui, -apple-system, 'Segoe UI', Arial, sans-serif",
+                "Cornell Data Science": "Palatino, 'Palatino Linotype', 'EB Garamond', 'Times New Roman', serif",
+            };
+
+            document.querySelectorAll<HTMLElement>(".horizontal-ticker__slide").forEach((slide) => {
+                const name = slide.getAttribute("data-company") || "";
+                const alt = slide.querySelector<HTMLElement>(".logo.alt");
+                const base = slide.querySelector<HTMLElement>(".logo");
+                const s = brandStyles[name];
+                const f = companyFonts[name];
+                if (alt && s) {
+                    alt.style.background = s.bg;
+                    alt.style.color = s.text;
+                }
+                if (f) {
+                    if (base) base.style.fontFamily = f;
+                    if (alt) alt.style.fontFamily = f;
+                }
+            });
+        };
+
+        init();
+
+        return () => {
+            disposed = true;
+            (sliders as any)._cleanupResize?.();
+            sliders.forEach((s) => s.destroy?.());
+        };
+    }, []);
 
     return (
-        <div className={dark ? "dark" : ""}>
+        <section className="not-prose">
+            <style>{`
+        .base-template__wrapper { max-width: 100dvw; padding: 64px 20px 60px; box-sizing: border-box; text-align: center; }
+        .base-template__title { font-family: 'Bebas Neue', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: 0.12em; margin: 0 0 10px; font-size: clamp(28px, 6vw, 68px); line-height: 0.95; color: #ffffff; text-shadow: 0 2px 8px rgba(0,0,0,.45); }
+        .base-template__text { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; font-weight: 400; opacity: .9; margin-bottom: 36px; line-height: 1.5; font-size: clamp(14px, 2vw, 22px); letter-spacing: 0.02em; color: rgba(255,255,255,0.88); }
+        .swiper { width: 100%; }
+        .swiper-wrapper { transition-timing-function: linear !important; }
+        .horizontal-ticker { margin: 0 -20px; display: flex; flex-direction: column; row-gap: 2.85vw; }
+        @media (max-width: 767.9px){ .horizontal-ticker { row-gap: 15px; } }
+        .horizontal-ticker__slide { position: relative; width: 15.625vw; aspect-ratio: 300/205; border-radius: 14px; overflow: hidden; backdrop-filter: blur(50px); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,.35) inset, 0 1px 0 rgba(255,255,255,.06) inset; }
+        @media (max-width: 767.9px){ .horizontal-ticker__slide { width: 240px; aspect-ratio: auto; } }
+        .horizontal-ticker__slide .logo, .horizontal-ticker__slide .logo.alt { position: absolute; inset: 0; display: grid; place-items: center; padding: 18px; font-weight: 800; text-align: center; line-height: 1.1; font-size: clamp(16px, 1.35vw, 24px); }
+        .horizontal-ticker__slide .logo { opacity: 1; transition: opacity .6s ease-out, transform .6s ease-out; color: #e7e7e7; background: rgba(255,255,255,.04); }
+        .horizontal-ticker__slide .logo.alt { opacity: 0; transition: opacity .6s ease-out, transform .6s ease-out; color: #fff; background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02)); backdrop-filter: blur(60px); }
+        @media (hover:hover) and (pointer:fine){ .horizontal-ticker__slide:hover .logo { opacity: 0; transform: scale(1.02); } .horizontal-ticker__slide:hover .logo.alt { opacity: 1; transform: scale(1.02); } }
+      `}</style>
+
+            <div className="base-template__wrapper">
+                <h2 className="base-template__title text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                    Where I've Built Things
+                </h2>
+                <div className="base-template__text mx-auto max-w-2xl text-zinc-600 dark:text-zinc-400">
+                    A seamless continuous ticker featuring places I've worked and interned.
+                </div>
+
+                <div className="base-template__content">
+                    <div className="horizontal-ticker">
+                        {/* RTL Slider */}
+                        <div id="horizontal-ticker-rtl" className="swiper horizontal-ticker__slider">
+                            <div className="swiper-wrapper">
+                                {["amazon", "coinbase", "Millennium Management", "Cornell Data Science", "amazon", "coinbase", "Millennium Management", "Cornell Data Science"].map((company, i) => (
+                                    <div
+                                        key={`rtl-${i}-${company}`}
+                                        className="swiper-slide horizontal-ticker__slide"
+                                        data-company={company}
+                                    >
+                                        <span className="logo">{company}</span>
+                                        <span className="logo alt">{company}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* LTR Slider */}
+                        <div id="horizontal-ticker-ltr" className="swiper horizontal-ticker__slider">
+                            <div className="swiper-wrapper">
+                                {["Beats by Dre", "NumberOne AI", "NASA", "MIT Lincoln Lab", "Beats by Dre", "NumberOne AI", "NASA", "MIT Lincoln Lab"].map((company, i) => (
+                                    <div
+                                        key={`ltr-${i}-${company}`}
+                                        className="swiper-slide horizontal-ticker__slide"
+                                        data-company={company}
+                                    >
+                                        <span className="logo">{company}</span>
+                                        <span className="logo alt">{company}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+/* ============================== Radar Charts =============================== */
+function RadarCharts() {
+    useEffect(() => {
+        if (!isBrowser) return;
+
+        // Load Nunito font + ZingChart once
+        ensureLinkOnce(
+            "https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap",
+            "nunito-font"
+        );
+
+        let disposed = false;
+
+        (async () => {
+            await ensureScriptOnce(
+                "https://cdn.zingchart.com/zingchart.min.js",
+                "zingchart-lib-loaded"
+            );
+            if (disposed) return;
+
+            const win = window as any;
+            const zingchart = win.zingchart;
+            const ZC = win.ZC;
+            if (!zingchart || !ZC) return;
+
+            // License + base theme
+            ZC.LICENSE = ["7b185ca19b4be2cba68fdcd369c663a9"];
+
+            const white = "#fff";
+            const transparent = "transparent";
+            const lightPink = "#C3A9C6";
+            const lightBlue = "#53688B";
+
+            // Personality (left)
+            const labelsPerson = [
+                "Intellect",
+                "Emotional Stability",
+                "Assertiveness",
+                "Sociable",
+                "Dutifulness",
+                "Self-Confidence",
+                "Sensitivity",
+                "Distrust",
+                "Imagination",
+                "Reserve",
+                "Anxiety",
+                "Complexity",
+                "Self-reliance",
+                "Orderliness",
+                "Emotionality",
+                "Warmth",
+            ];
+            const valuesPerson = [100, 90, 65, 80, 80, 85, 80, 45, 90, 10, 20, 95, 55, 60, 10, 80];
+
+            // Tech skills (right)
+            const labelsTech = ["C++", "HTML", "Javascript", "Node.js", "SQL", "Python", "Java", "CSS"];
+            const valuesTech = [5, 3, 4, 3, 4, 5, 5, 1];
+
+            function baseConfig(kLabels: string[], vMin: number, vMax: number, vStep: number) {
+                return {
+                    type: "radar",
+                    globals: { fontFamily: "Nunito" },
+                    backgroundColor: transparent,
+                    gui: { contextMenu: { visible: false }, logo: { visible: false } },
+                    logo: { visible: false },
+                    legend: { visible: false },
+                    plot: { aspect: "area", alphaArea: 0.6 },
+                    scaleK: {
+                        labels: kLabels,
+                        item: { fontColor: white },
+                        guide: {
+                            lineStyle: "solid",
+                            lineColor: white,
+                            backgroundColor: transparent,
+                        },
+                        tick: { lineColor: white },
+                    },
+                    scaleV: {
+                        minValue: vMin,
+                        maxValue: vMax,
+                        step: vStep,
+                        item: { visible: false },
+                        guide: {
+                            lineStyle: "solid",
+                            lineColor: white,
+                            backgroundColor: transparent,
+                        },
+                    },
+                };
+            }
+
+            // Configs
+            const chartOneData = baseConfig(labelsPerson, 0, 100, 20);
+            (chartOneData as any).series = [
+                { values: valuesPerson, backgroundColor: lightPink, lineColor: lightPink },
+            ];
+
+            const chartTwoData = baseConfig(labelsTech, 0, 5, 1);
+            (chartTwoData as any).series = [
+                { values: valuesTech, backgroundColor: lightBlue, lineColor: lightBlue },
+            ];
+
+            // Render charts (height is 100% of our taller container)
+            zingchart.render({
+                id: "chartOne",
+                data: chartOneData,
+                height: "100%",
+                width: "100%",
+            });
+            zingchart.render({
+                id: "chartTwo",
+                data: chartTwoData,
+                height: "100%",
+                width: "100%",
+            });
+
+            // Lightweight runtime checks
+            function assertOk(cond: boolean, msg: string) {
+                if (!cond) {
+                    console.error("Test failed:", msg);
+                } else {
+                    console.log("✓", msg);
+                }
+            }
+
+            function attachChecks(
+                id: string,
+                cfg: any,
+                color: string,
+                expectLen: number,
+                vMin: number,
+                vMax: number
+            ) {
+                zingchart.bind(id, "complete", function () {
+                    try {
+                        assertOk(cfg.title === undefined, id + ": No title configured");
+                        assertOk(cfg.legend && cfg.legend.visible === false, id + ": Legend hidden");
+                        assertOk(
+                            Array.isArray(cfg.series) && cfg.series.length === 1,
+                            id + ": One series"
+                        );
+                        assertOk(cfg.series[0].lineColor === color, id + ": Correct color");
+                        const el = document.getElementById(id);
+                        assertOk(
+                            !!el && el.children.length > 0,
+                            id + ": Container populated"
+                        );
+                        assertOk(
+                            cfg.scaleV.minValue === vMin && cfg.scaleV.maxValue === vMax,
+                            id + ": Axis range"
+                        );
+                        assertOk(
+                            cfg.scaleK.labels.length === expectLen &&
+                            cfg.series[0].values.length === expectLen,
+                            id + ": Labels/values length"
+                        );
+                    } catch (e) {
+                        console.error(id + " assertion error:", e);
+                    }
+                });
+            }
+
+            attachChecks("chartOne", chartOneData, lightPink, 16, 0, 100);
+            attachChecks("chartTwo", chartTwoData, lightBlue, 8, 0, 5);
+        })();
+
+        return () => {
+            disposed = true;
+            const win = window as any;
+            const zingchart = win.zingchart;
+            if (zingchart && typeof zingchart.exec === "function") {
+                try {
+                    zingchart.exec("chartOne", "destroy");
+                    zingchart.exec("chartTwo", "destroy");
+                } catch {
+                    // ignore cleanup errors
+                }
+            }
+        };
+    }, []);
+
+    return (
+        <div className="mt-8">
+            <style>{`
+        .radar-root {
+          --purple: #000000;
+          background-color: var(--purple);
+          border-radius: 16px;
+          padding: 16px;
+          margin-top: 8px;
+        }
+
+        /* ⬆️ increased height to give labels more room */
+        .radar-main {
+          display: flex;
+          flex-wrap: wrap;
+          height: 420px;
+        }
+        .radar-section {
+          height: 110%;
+          width: 50%;
+        }
+
+        @media (max-width: 750px) {
+          /* more height on mobile too */
+          .radar-main {
+            height: 520px;
+          }
+          .radar-section {
+            width: 100%;
+            height: 50%;
+          }
+        }
+      `}</style>
+            <div className="radar-root">
+                <div className="radar-main">
+                    <section
+                        id="chartOne"
+                        className="radar-section"
+                        role="img"
+                        aria-label="Radar chart with 16 personality traits (pink)"
+                    />
+                    <section
+                        id="chartTwo"
+                        className="radar-section"
+                        role="img"
+                        aria-label="Radar chart with 8 tech skills scored 1–5 (dark blue)"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function AboutICan() {
+    const ref = React.useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        // 1) Load Geist font once (scoped component uses it)
+        ensureLinkOnce(
+            "https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap",
+            "geist-font"
+        );
+
+        // 2) Set data-attributes + CSS variables on the wrapper (scoped, not global)
+        const el = ref.current;
+        if (!el) return;
+
+        el.dataset.theme = "dark";
+        el.dataset.syncScrollbar = "true";
+        el.dataset.animate = "true";
+        el.dataset.snap = "true";
+
+        const start = Math.floor(Math.random() * 101);
+        const end = Math.floor(900 + Math.random() * 101);
+        el.style.setProperty("--start", String(start));
+        el.style.setProperty("--hue", String(start));
+        el.style.setProperty("--end", String(end));
+
+        // 3) Fallback only if CSS View Timelines aren’t supported
+        const supportsViewTimeline =
+            CSS.supports("(animation-timeline: scroll()) and (animation-range: 0% 100%)");
+
+        let cleanup: (() => void) | undefined;
+
+        if (!supportsViewTimeline) {
+            // Load GSAP UMDs (attach to window)
+            const load = async () => {
+                await ensureScriptOnce(
+                    "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+                    "gsap-loaded-3-12-5"
+                );
+                await ensureScriptOnce(
+                    "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+                    "gsap-st-loaded-3-12-5"
+                );
+
+                const w = window as any;
+                const gsap = w.gsap;
+                const ScrollTrigger = w.ScrollTrigger;
+                if (!gsap || !ScrollTrigger) return;
+                gsap.registerPlugin(ScrollTrigger);
+
+                const items = Array.from(el.querySelectorAll<HTMLLIElement>("[data-ican] ul li, ul li"));
+                if (items.length) gsap.set(items, { opacity: (i: number) => (i !== 0 ? 0.2 : 1) });
+
+                // Dim/brighten the list as you scroll
+                const dimmer = gsap.timeline()
+                    .to(items.slice(1), { opacity: 1, stagger: 0.5 })
+                    .to(items.slice(0, items.length - 1), { opacity: 0.2, stagger: 0.5 }, 0);
+
+                ScrollTrigger.create({
+                    trigger: items[0],
+                    endTrigger: items[items.length - 1],
+                    start: "center center",
+                    end: "center center",
+                    animation: dimmer,
+                    scrub: 0.2,
+                    scroller: document.scrollingElement as Element | undefined,
+                });
+
+                // Animate --hue across the scroll
+                const scroller = gsap.fromTo(
+                    el,
+                    { "--hue": start } as any,
+                    {
+                        "--hue": end,
+                        ease: "none",
+                        scrollTrigger: {
+                            trigger: items[0],
+                            endTrigger: items[items.length - 1],
+                            start: "center center",
+                            end: "center center",
+                            scrub: 0.2,
+                            scroller: document.scrollingElement as Element | undefined,
+                        },
+                    } as any
+                );
+
+                // Chroma on near the start…
+                gsap.fromTo(
+                    el,
+                    { "--chroma": 0 } as any,
+                    {
+                        "--chroma": 0.3,
+                        ease: "none",
+                        scrollTrigger: {
+                            scrub: 0.2,
+                            trigger: items[0],
+                            start: "center center+=40",
+                            end: "center center",
+                            scroller: document.scrollingElement as Element | undefined,
+                        },
+                    } as any
+                );
+                // …and off near the end
+                gsap.fromTo(
+                    el,
+                    { "--chroma": 0.3 } as any,
+                    {
+                        "--chroma": 0,
+                        ease: "none",
+                        scrollTrigger: {
+                            scrub: 0.2,
+                            trigger: items[items.length - 2],
+                            start: "center center",
+                            end: "center center-=40",
+                            scroller: document.scrollingElement as Element | undefined,
+                        },
+                    } as any
+                );
+
+                cleanup = () => {
+                    try {
+                        ScrollTrigger.getAll().forEach((t: any) => t.kill());
+                        dimmer.kill?.();
+                        (scroller as any).kill?.();
+                    } catch { }
+                };
+            };
+
+            load();
+        }
+
+        return () => {
+            cleanup?.();
+        };
+    }, []);
+
+    return (
+        <div
+            ref={ref}
+            data-ican=""
+            className="not-prose"
+            style={{
+                // full-bleed like your original snippet
+                width: "100vw",
+                marginLeft: "calc(50% - 50vw)",
+                marginRight: "calc(50% - 50vw)",
+            }}
+        >
+            {/* SCOPED styles — prefixed with [data-ican] so nothing leaks */}
+            <style>{`
+/* ---------- Variables & feature toggles ---------- */
+[data-ican] {
+  --hue: 0;
+  --chroma: 0;
+  --lightness: 65%;
+  --base-chroma: 0.3;
+  --start: 0;
+  --end: 360;
+  color-scheme: light dark;
+  font-family: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+[data-ican][data-theme='dark'] { --lightness: 75%; }
+@media (prefers-color-scheme: dark) { [data-ican] { --lightness: 75%; } }
+
+/* Scoped “grid” background that the original put on <body>::before */
+[data-ican]::before {
+  --size: 45px;
+  --line: color-mix(in hsl, canvasText, transparent 70%);
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    linear-gradient(90deg, var(--line) 1px, transparent 1px var(--size)) 50% 50% / var(--size) var(--size),
+    linear-gradient(var(--line) 1px, transparent 1px var(--size)) 50% 50% / var(--size) var(--size);
+  mask: linear-gradient(-20deg, transparent 50%, white);
+  pointer-events: none; z-index: 0;
+}
+
+/* ---------- Layout (stick layer) ---------- */
+[data-ican] .content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.5fr) min(32vw, 440px);
+  column-gap: 1.25rem;
+  align-items: start;
+  padding: 0 5rem 0 5rem;
+  min-height: 80vh;
+}
+@media (max-width: 900px) {
+  [data-ican] .content {
+    grid-template-columns: 1fr;
+    padding: 0 1rem;
+  }
+}
+
+[data-ican] h2 {
+  position: sticky;
+  top: calc(50% - 0.5lh);
+  margin: 0;
+  height: fit-content;
+  font-weight: 600;
+}
+
+[data-ican] .media {
+  position: sticky;
+  top: 40vh;
+  align-self: start;
+  justify-self: end;
+  margin-left: 2.75rem;
+}
+@media (max-width: 900px) {
+  [data-ican] .media {
+    position: static;
+    margin-top: 1rem;
+    justify-self: stretch;
+  }
+}
+
+[data-ican] .media video {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  display: block;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  object-fit: cover;
+}
+
+/* ---------- Scrollbar sync (scoped) ---------- */
+[data-ican][data-sync-scrollbar='true'] {
+  scrollbar-color: oklch(var(--lightness) var(--chroma) var(--hue)) #0000;
+}
+@supports (animation-timeline: scroll()) and (animation-range: 0% 100%) {
+  [data-ican][data-sync-scrollbar='true'][data-animate='true'] {
+    timeline-scope: --list;
+    scrollbar-color: oklch(var(--lightness) var(--chroma, 0) var(--hue)) #0000;
+    animation-name: ican-change, ican-chroma-on, ican-chroma-off;
+    animation-fill-mode: both;
+    animation-timing-function: linear;
+    animation-range: entry 50% exit 50%, entry 40% entry 50%, exit 30% exit 40%;
+    animation-timeline: --list;
+  }
+  [data-ican] ul { view-timeline: --list; }
+  @keyframes ican-change { to { --hue: var(--end); } }
+  @keyframes ican-chroma-on { to { --chroma: 0.3; } }
+  @keyframes ican-chroma-off { to { --chroma: 0; } }
+}
+
+/* ---------- Headings & list (effect layer) ---------- */
+[data-ican] ul {
+  --count: 22; /* default; overridden via inline style */
+  --step: calc((var(--end) - var(--start)) / (var(--count) - 1));
+  font-weight: 600;
+  padding-inline: 0;
+  margin: 0;
+  list-style-type: none;
+}
+[data-ican] li { margin-block: 0.2lh; }
+[data-ican] li:not(:last-of-type) {
+  color: oklch(var(--lightness) var(--base-chroma) calc(var(--start) + (var(--step) * var(--i))));
+}
+/* Gradient text look */
+[data-ican] h2,
+[data-ican] li:last-of-type {
+  background: linear-gradient(canvasText 50%, color-mix(in oklch, canvas, canvasText 25%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* View-timeline driven per-item brighten */
+@supports (animation-timeline: view()) and (animation-range: 0% 100%) {
+  [data-ican][data-animate='true'] li {
+    opacity: 0.2;
+    animation-name: ican-brighten;
+    animation-fill-mode: both;
+    animation-timing-function: linear;
+    animation-range: cover calc(50% - 1lh) calc(50% + 1lh);
+    animation-timeline: view();
+  }
+  [data-ican][data-animate='true'] li:first-of-type { --start-opacity: 1; }
+  [data-ican][data-animate='true'] li:last-of-type { --brightness: 1; --end-opacity: 1; }
+
+  @keyframes ican-brighten {
+    0%   { opacity: var(--start-opacity, 0.2); }
+    50%  { opacity: 1; filter: brightness(var(--brightness, 1.2)); }
+    100% { opacity: var(--end-opacity, 0.2); }
+  }
+}
+
+/* Utility from your snippet */
+[data-ican] .sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0;
+}
+      `}</style>
+
+            {/* CONTENT */}
+            <section className="content fluid">
+                <h2 className="fluid" style={{ ["--font-level" as any]: 4 }}>
+                    <span aria-hidden="true">I can&nbsp;</span>
+                    <span className="sr-only">I can ship things.</span>
+                </h2>
+
+                <ul aria-hidden="true" style={{ ["--count" as any]: 22 }}>
+                    <li style={{ ["--i" as any]: 0 }}>design.</li>
+                    <li style={{ ["--i" as any]: 1 }}>prototype.</li>
+                    <li style={{ ["--i" as any]: 2 }}>solve.</li>
+                    <li style={{ ["--i" as any]: 3 }}>build.</li>
+                    <li style={{ ["--i" as any]: 4 }}>develop.</li>
+                    <li style={{ ["--i" as any]: 5 }}>debug.</li>
+                    <li style={{ ["--i" as any]: 6 }}>learn.</li>
+                    <li style={{ ["--i" as any]: 7 }}>cook.</li>
+                    <li style={{ ["--i" as any]: 8 }}>ship.</li>
+                    <li style={{ ["--i" as any]: 9 }}>prompt.</li>
+                    <li style={{ ["--i" as any]: 10 }}>collaborate.</li>
+                    <li style={{ ["--i" as any]: 11 }}>create.</li>
+                    <li style={{ ["--i" as any]: 12 }}>inspire.</li>
+                    <li style={{ ["--i" as any]: 13 }}>follow.</li>
+                    <li style={{ ["--i" as any]: 14 }}>innovate.</li>
+                    <li style={{ ["--i" as any]: 15 }}>test.</li>
+                    <li style={{ ["--i" as any]: 16 }}>optimize.</li>
+                    <li style={{ ["--i" as any]: 17 }}>teach.</li>
+                    <li style={{ ["--i" as any]: 18 }}>visualize.</li>
+                    <li style={{ ["--i" as any]: 19 }}>transform.</li>
+                    <li style={{ ["--i" as any]: 20 }}>scale.</li>
+                    <li style={{ ["--i" as any]: 21 }}>do it.</li>
+                </ul>
+
+                <aside className="media" aria-label="Demo video">
+                    <video
+                        src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+                        poster="https://images.unsplash.com/photo-1520975954732-35dd222996f2?q=80&w=1600&auto=format&fit=crop"
+                        controls
+                        playsInline
+                        preload="metadata"
+                    />
+                </aside>
+            </section>
+        </div>
+    );
+}
+
+/* ================================== AboutScroller ==================================== */
+
+function AboutScroller() {
+    const rootRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!isBrowser || !rootRef.current) return;
+
+        // Bring over the demo’s font + (optionally) normalize.css without touching global site styles
+        ensureLinkOnce(
+            "https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap",
+            "geist-font"
+        );
+        // If you want the normalize layer too, uncomment the next line:
+        // ensureLinkOnce("https://unpkg.com/normalize.css@8.0.1/normalize.css", "normalize-css");
+
+        const root = rootRef.current;
+        // Mirror the demo’s data-* flags, *scoped* to this component (not documentElement)
+        root.dataset.theme = "dark";
+        root.dataset.syncScrollbar = "true";
+        root.dataset.animate = "true";
+        root.dataset.snap = "true";
+
+        // Randomized hue range like the original
+        const start = Math.floor(Math.random() * 101);
+        const end = Math.floor(900 + Math.random() * 101);
+        root.style.setProperty("--start", String(start));
+        root.style.setProperty("--hue", String(start));
+        root.style.setProperty("--end", String(end));
+
+        // Fallback if CSS View Timelines aren’t supported: load GSAP + ScrollTrigger (UMD) once
+        const supportsTimelines = CSS.supports(
+            "(animation-timeline: scroll()) and (animation-range: 0% 100%)"
+        );
+
+        let cleanup: (() => void) | undefined;
+
+        (async () => {
+            if (supportsTimelines) return;
+
+            await ensureScriptOnce(
+                "https://cdn.jsdelivr.net/npm/gsap@3.12.0/dist/gsap.min.js",
+                "gsap-3-12"
+            );
+            await ensureScriptOnce(
+                "https://cdn.jsdelivr.net/npm/gsap@3.12.0/dist/ScrollTrigger.min.js",
+                "gsap-st-3-12"
+            );
+
+            const gsap = (window as any).gsap;
+            const ScrollTrigger = (window as any).ScrollTrigger;
+            if (!gsap || !ScrollTrigger) return;
+
+            gsap.registerPlugin(ScrollTrigger);
+
+            const items = root.querySelectorAll<HTMLLIElement>(".aboutfx ul li");
+            if (items.length) gsap.set(items, { opacity: (i: number) => (i !== 0 ? 0.2 : 1) });
+
+            const list = Array.from(items);
+
+            const dimmer = gsap
+                .timeline()
+                .to(list.slice(1), { opacity: 1, stagger: 0.5 })
+                .to(list.slice(0, list.length - 1), { opacity: 0.2, stagger: 0.5 }, 0);
+
+            ScrollTrigger.create({
+                trigger: list[0],
+                endTrigger: list[list.length - 1],
+                start: "center center",
+                end: "center center",
+                animation: dimmer,
+                scrub: 0.2,
+            });
+
+            const scroller = gsap.timeline().fromTo(
+                root,
+                { "--hue": start } as any,
+                { "--hue": end, ease: "none" } as any
+            );
+
+            ScrollTrigger.create({
+                trigger: list[0],
+                endTrigger: list[list.length - 1],
+                start: "center center",
+                end: "center center",
+                animation: scroller,
+                scrub: 0.2,
+            });
+
+            gsap.fromTo(
+                root,
+                { "--chroma": 0 } as any,
+                {
+                    "--chroma": 0.3,
+                    ease: "none",
+                    scrollTrigger: {
+                        scrub: 0.2,
+                        trigger: list[0],
+                        start: "center center+=40",
+                        end: "center center",
+                    },
+                } as any
+            );
+
+            gsap.fromTo(
+                root,
+                { "--chroma": 0.3 } as any,
+                {
+                    "--chroma": 0,
+                    ease: "none",
+                    scrollTrigger: {
+                        scrub: 0.2,
+                        trigger: list[list.length - 2],
+                        start: "center center",
+                        end: "center center-=40",
+                    },
+                } as any
+            );
+
+            cleanup = () => {
+                (window as any).ScrollTrigger?.getAll().forEach((t: any) => t.kill());
+                gsap.globalTimeline?.clear?.();
+            };
+        })();
+
+        return () => cleanup?.();
+    }, []);
+
+    return (
+        <div ref={rootRef} className="aboutfx not-prose">
+            {/* === Scoped CSS from your demo, namespaced under .aboutfx to avoid clashes === */}
+            <style>{`
+    /* ---------- Variables & base (scoped) ---------- */
+    .aboutfx { 
+    --font-size-min: 14; --font-size-max: 20; --font-ratio-min: 1.1; --font-ratio-max: 1.33; 
+    --font-width-min: 375; --font-width-max: 1500;
+    --start: 0; --end: 360; --lightness: 65%; --base-chroma: 0.3;
+    color-scheme: light dark;
+    font-family: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    }
+    .aboutfx[data-theme='light'] { color-scheme: light only; --lightness: 65%; }
+    .aboutfx[data-theme='dark'] { color-scheme: dark only; --lightness: 75%; }
+
+    .aboutfx .sr-only { position: absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+    .aboutfx .fluid {
+    --fluid-min: calc(var(--font-size-min) * pow(var(--font-ratio-min), var(--font-level, 0)));
+    --fluid-max: calc(var(--font-size-max) * pow(var(--font-ratio-max), var(--font-level, 0)));
+    --fluid-preferred: calc((var(--fluid-max) - var(--fluid-min)) / (var(--font-width-max) - var(--font-width-min)));
+    --fluid-type: clamp((var(--fluid-min) / 16) * 1rem, ((var(--fluid-min) / 16) * 1rem) - (((var(--fluid-preferred) * var(--font-width-min)) / 16) * 1rem) + (var(--fluid-preferred) * 100vi), (var(--fluid-max) / 16) * 1rem);
+    font-size: var(--fluid-type);
+    }
+
+    /* ---------- Scrollbar sync (scoped) ---------- */
+    @property --hue { initial-value: 0; syntax: '<number>'; inherits: false; }
+    @property --chroma { initial-value: 0; syntax: '<number>'; inherits: true; }
+
+    .aboutfx[data-sync-scrollbar='true'] {
+    scrollbar-color: oklch(var(--lightness) var(--chroma) var(--hue)) #0000;
+    }
+
+    @supports (animation-timeline: scroll()) and (animation-range: 0% 100%) {
+    .aboutfx[data-sync-scrollbar='true'][data-animate='true'] {
+        timeline-scope: --list;
+        scrollbar-color: oklch(var(--lightness) var(--chroma, 0) var(--hue)) #0000;
+        animation-name: aboutfx-change, aboutfx-chroma-on, aboutfx-chroma-off;
+        animation-fill-mode: both;
+        animation-timing-function: linear;
+        animation-range: entry 50% exit 50%, entry 40% entry 50%, exit 30% exit 40%;
+        animation-timeline: --list;
+    }
+    .aboutfx[data-sync-scrollbar='true'][data-animate='true'] ul { view-timeline: --list; }
+    }
+    @keyframes aboutfx-change { to { --hue: var(--end); } }
+    @keyframes aboutfx-chroma-on { to { --chroma: 0.3; } }
+    @keyframes aboutfx-chroma-off { to { --chroma: 0; } }
+
+    /* ---------- Effect layer (scoped) ---------- */
+    .aboutfx ul { --step: calc((var(--end) - var(--start)) / (var(--count) - 1)); }
+    .aboutfx li:not(:last-of-type) {
+    color: oklch(var(--lightness) var(--base-chroma) calc(var(--start) + (var(--step) * var(--i))));
+    }
+
+    @supports (animation-timeline: scroll()) and (animation-range: 0% 100%) {
+    .aboutfx[data-animate='true'] li {
+        opacity: 0.2;
+        animation-name: aboutfx-brighten;
+        animation-fill-mode: both;
+        animation-timing-function: linear;
+        animation-range: cover calc(50% - 1lh) calc(50% + 1lh);
+        animation-timeline: view();
+    }
+    .aboutfx[data-animate='true'] li:first-of-type { --start-opacity: 1; }
+    .aboutfx[data-animate='true'] li:last-of-type { --brightness: 1; --end-opacity: 1; }
+
+    @keyframes aboutfx-brighten {
+        0% { opacity: var(--start-opacity, 0.2); }
+        50% { opacity: 1; filter: brightness(var(--brightness, 1.2)); }
+        100% { opacity: var(--end-opacity, 0.2); }
+    }
+    }
+
+    /* ---------- Layout (scoped) ---------- */
+    .aboutfx .aboutfx-header { min-height: 40vh; display: grid; place-items: center; width: 100%; padding-inline: 1.5rem; }
+    .aboutfx .aboutfx-header h1 { 
+    --font-size-min: 24; --font-level: 8; text-wrap: pretty; line-height: 0.8; margin: 0; 
+    background: linear-gradient(canvasText 60%, color-mix(in oklch, canvas, canvasText)); 
+    -webkit-background-clip: text; background-clip: text; color: #0000;
+    }
+
+    .aboutfx .aboutfx-main { width: 100%; }
+    .aboutfx .aboutfx-content { 
+    --font-level: 6; 
+    display: flex; gap: 2.5rem; line-height: 1.25; width: 100%; padding-left: 1.5rem; 
+    }
+    .aboutfx .aboutfx-content h2 { 
+    position: sticky; top: calc(50% - 0.5lh); font-size: inherit; margin: 0; display: inline-block; 
+    height: fit-content; font-weight: 600; 
+    background: linear-gradient(canvasText 50%, color-mix(in oklch, canvas, canvasText 25%));
+    -webkit-background-clip: text; background-clip: text; color: #0000;
+    }
+    .aboutfx ul { font-weight: 600; padding-inline: 0; margin: 0; list-style-type: none; }
+    .aboutfx li:last-of-type { 
+    background: linear-gradient(canvasText 50%, color-mix(in oklch, canvas, canvasText 25%));
+    -webkit-background-clip: text; background-clip: text; color: #0000; 
+    }
+
+    .aboutfx .aboutfx-fin { min-height: 60vh; display: grid; place-items: center; width: 100%; justify-content: center; }
+
+    /* Keep your site's black background visible behind this block */
+    .aboutfx { background: transparent; }
+        `}</style>
+
+            {/* Markup ported from your HTML, with scoped class names */}
+            <div className="aboutfx-main">
+                <section className="aboutfx-content fluid">
+                    <h2>
+                        <span aria-hidden="true">I can&nbsp;</span>
+                        <span className="sr-only">you can ship things.</span>
+                    </h2>
+
+                    <ul aria-hidden="true" style={{ ["--count" as any]: 22 }}>
+                        {[
+                            "solve.", "build.", "inspire.", "learn.", "ship.",
+                            "collaborate.", "create.", "innovate.", "optimize.", "teach.",
+                            "visualize.", "scale.", "do it."
+                        ].map((t, i) => (
+                            <li key={i} style={{ ["--i" as any]: i }}>{t}</li>
+                        ))}
+                    </ul>
+                </section>
+            </div>
+        </div>
+    );
+}
+
+
+/* ================================== App ==================================== */
+export default function App() {
+    const [intro, setIntro] = useState(true);
+    const [fading, setFading] = useState(false);
+
+    // Intro timers
+    useEffect(() => {
+        const t1 = setTimeout(() => setFading(true), INTRO_MS); // start fade
+        const t2 = setTimeout(() => setIntro(false), INTRO_MS + FADE_MS); // remove overlay
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+        };
+    }, []);
+
+    const overlay = intro ? (
+        <IntroOverlay
+            onDismiss={() => {
+                if (fading) return;
+                setFading(true);
+                setTimeout(() => setIntro(false), FADE_MS);
+            }}
+            fading={fading}
+        />
+    ) : null;
+
+    return (
+        <div className="dark">
+            {overlay}
             <a
                 href="#content"
                 className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 rounded bg-indigo-600 px-3 py-2 text-white"
@@ -238,7 +2040,10 @@ export default function App() {
                 Skip to content
             </a>
 
-            <div className="min-h-dvh bg-gradient-to-b from-zinc-50 to-white text-zinc-800 transition dark:from-zinc-950 dark:to-zinc-900 dark:text-zinc-100">
+            <div
+                className="min-h-dvh bg-black text-zinc-800 transition dark:text-zinc-100"
+                style={{ opacity: fading || !intro ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
+            >
                 {/* Header */}
                 <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-zinc-800/70 dark:bg-zinc-950/50">
                     <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
@@ -252,10 +2057,15 @@ export default function App() {
                             </span>
                         </div>
                         <nav className="hidden items-center gap-6 md:flex">
-                            <a className="nav-link" href="#about">About</a>
-                            <a className="nav-link" href="#projects">Projects</a>
-                            <a className="nav-link" href="#experience">Experience</a>
-                            <a className="nav-link" href="#contact">Contact</a>
+                            <a className={NL} href="#about">
+                                About
+                            </a>
+                            <a className={NL} href="#projects">
+                                Projects
+                            </a>
+                            <a className={NL} href="#contact">
+                                Contact
+                            </a>
                             <a
                                 className="rounded-xl border border-zinc-300 px-3 py-1.5 text-sm font-medium shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700"
                                 href={LINKS[0].href}
@@ -265,15 +2075,6 @@ export default function App() {
                                 Resume
                             </a>
                         </nav>
-                        <div className="flex items-center gap-2">
-                            <button
-                                aria-label="Toggle theme"
-                                onClick={() => setDark((d) => !d)}
-                                className="rounded-xl border border-zinc-300 p-2 shadow-sm transition hover:rotate-6 dark:border-zinc-700"
-                            >
-                                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                            </button>
-                        </div>
                     </div>
                 </header>
 
@@ -284,11 +2085,14 @@ export default function App() {
                         <div className="grid items-center gap-10 md:grid-cols-2">
                             <div>
                                 <h1 className="text-3xl font-semibold leading-tight tracking-tight md:text-5xl">
-                                    {PROFILE.role}
+                                    <span className="align-baseline">Soft</span>
+                                    {/* Only scramble this segment */}
+                                    <ScrambleTitle text="ware Engineer" start={fading} />
                                 </h1>
                                 <p className="mt-4 max-w-prose text-zinc-600 dark:text-zinc-400">
                                     {PROFILE.tagline}
                                 </p>
+
                                 <div className="mt-6 flex flex-wrap items-center gap-3">
                                     <a
                                         href={`mailto:${PROFILE.email}`}
@@ -296,72 +2100,50 @@ export default function App() {
                                     >
                                         <Mail className="h-4 w-4" /> Email me
                                     </a>
-                                    {LINKS.filter((l) => l.label !== "Email").map(
-                                        ({ label, href, icon: Icon }) => (
-                                            <a
-                                                key={label}
-                                                href={href}
-                                                target="_blank"
-                                                rel="noreferrer noopener"
-                                                className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700"
-                                            >
-                                                <Icon className="h-4 w-4" /> {label}
-                                            </a>
-                                        )
-                                    )}
+                                    {LINKS.filter((l) => l.label !== "Email").map(({ label, href, icon: Icon }) => (
+                                        <a
+                                            key={label}
+                                            href={href}
+                                            target="_blank"
+                                            rel="noreferrer noopener"
+                                            className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700"
+                                        >
+                                            <Icon className="h-4 w-4" /> {label}
+                                        </a>
+                                    ))}
                                 </div>
                                 <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
                                     Based in {PROFILE.location}
                                 </p>
                             </div>
 
-                            {PROFILE.introVideo ? (
-                                <div className="relative overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
-                                    <video
-                                        ref={vref}
-                                        className="aspect-video h-full w-full object-cover"
-                                        src={PROFILE.introVideo.src}
-                                        poster={PROFILE.introVideo.poster}
-                                        controls
-                                        playsInline
-                                        muted
-                                    />
-                                    <div className="absolute bottom-3 left-3 flex gap-2">
-                                        <button
-                                            onClick={() => setSoundOn((s) => !s)}
-                                            className="inline-flex items-center gap-2 rounded-xl bg-white/90 px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur transition dark:bg-zinc-900/80"
-                                            aria-pressed={soundOn}
-                                            aria-label={soundOn ? "Mute video" : "Unmute video"}
-                                        >
-                                            {soundOn ? (
-                                                <>
-                                                    <Volume2 className="h-4 w-4" /> Sound on
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <VolumeX className="h-4 w-4" /> Silent
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : null}
+                            {/* Music Player on the right, where the video used to be */}
+                            <MusicPlayer />
                         </div>
                     </section>
 
                     {/* About */}
                     <Section id="about" title="About" hint="Crisp bio + focus areas">
-                        <div className="prose max-w-none dark:prose-invert">
-                            <p>
-                                I’m {PROFILE.name}, a builder who enjoys the full stack: data plumbing, APIs, and delightful
-                                front-ends. I care about correctness, performance, and small UX details that earn trust.
-                            </p>
-                            <p>
-                                Recently I’ve been focused on streaming systems, LLM tooling, and lightweight developer
-                                platforms. I value clear docs, measurable impact, and teams that mentor generously.
-                            </p>
-                        </div>
+                        <AboutScroller />
+
+                        <RadarCharts />
+
+                        {/* Intro video under the radar charts */}
+                        {PROFILE.introVideo ? (
+                            <div className="mt-16 max-w-3xl mx-auto">
+                                <div className="relative overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
+                                    <video
+                                        className="aspect-video h-full w-full object-cover"
+                                        src={PROFILE.introVideo.src}
+                                        poster={PROFILE.introVideo.poster}
+                                        controls
+                                        playsInline
+                                    />
+                                </div>
+                            </div>
+                        ) : null}
                     </Section>
+
 
                     {/* Projects */}
                     <Section id="projects" title="Projects" hint="Case studies → outcomes">
@@ -370,30 +2152,6 @@ export default function App() {
                                 <ProjectCard key={p.title} p={p} />
                             ))}
                         </div>
-                    </Section>
-
-                    {/* Experience */}
-                    <Section id="experience" title="Experience" hint="Selected roles">
-                        <ol className="relative space-y-6 border-l border-zinc-200 pl-6 dark:border-zinc-800">
-                            {EXPERIENCE.map((e) => (
-                                <li key={e.company} className="ml-2">
-                                    <div className="absolute -left-[7px] mt-1 h-3 w-3 rounded-full border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900" />
-                                    <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <p className="font-semibold text-zinc-900 dark:text-zinc-100">
-                                                {e.role} · {e.company}
-                                            </p>
-                                            <span className="text-xs text-zinc-500 dark:text-zinc-400">{e.time}</span>
-                                        </div>
-                                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-600 dark:text-zinc-400">
-                                            {e.bullets.map((b, i) => (
-                                                <li key={i}>{b}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </li>
-                            ))}
-                        </ol>
                     </Section>
 
                     {/* Contact */}
@@ -439,33 +2197,20 @@ export default function App() {
                                     </a>
                                 </p>
                             </form>
-
-                            <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
-                                <h3 className="text-sm font-semibold">Links</h3>
-                                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                                    {LINKS.map(({ label, href, icon: Icon }) => (
-                                        <li key={label}>
-                                            <a
-                                                className="flex items-center gap-2 rounded-xl border border-zinc-300 px-3 py-2 text-sm shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700"
-                                                href={href}
-                                                target="_blank"
-                                                rel="noreferrer noopener"
-                                            >
-                                                <Icon className="h-4 w-4" /> {label}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+                            <div className="hidden md:block" aria-hidden />
                         </div>
                     </Section>
+
+                    {/* Companies Ticker */}
+                    <CompaniesTicker />
                 </main>
 
                 {/* Footer */}
                 <footer className="border-t border-zinc-200 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                     <div className="mx-auto max-w-5xl px-4">
                         <p>
-                            © {new Date().getFullYear()} {PROFILE.name}. Built with React + Tailwind. Theme-aware, accessible, and deploy-ready.
+                            © {new Date().getFullYear()} {PROFILE.name}. Built with React + Tailwind. Theme-aware, accessible, and
+                            deploy-ready.
                         </p>
                     </div>
                 </footer>

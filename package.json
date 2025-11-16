@@ -1,31 +1,28 @@
 {
-    "name": "personal-site",
-    "version": "1.0.0",
+    "name": "vishnu-portfolio",
     "private": true,
+    "version": "0.0.1",
     "type": "module",
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "preview": "vite preview --port 4173"
+        "preview": "vite preview"
     },
     "dependencies": {
-        "lucide-react": "^0.469.0",
+        "lucide-react": "^0.468.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "recharts": "^2.12.7"
+        "recharts": "^2.15.4"
     },
     "devDependencies": {
-        "@tailwindcss/typography": "^0.5.10",
+        "@tailwindcss/typography": "^0.5.15",
         "@types/react": "^18.3.5",
         "@types/react-dom": "^18.3.0",
-        "@vitejs/plugin-react": "^4.3.3",
+        "@vitejs/plugin-react": "^4.3.1",
         "autoprefixer": "^10.4.20",
-        "postcss": "^8.4.47",
+        "postcss": "^8.4.49",
         "tailwindcss": "^3.4.14",
         "typescript": "^5.6.3",
-        "vite": "^5.4.8"
-    },
-    "engines": {
-        "node": ">=20"
+        "vite": "^5.4.9"
     }
 }
