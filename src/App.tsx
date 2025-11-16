@@ -1197,7 +1197,6 @@ function RadarCharts() {
             const ZC = win.ZC;
             if (!zingchart || !ZC) return;
 
-            // License + base theme
             ZC.LICENSE = ["7b185ca19b4be2cba68fdcd369c663a9"];
 
             const white = "#fff";
@@ -1205,7 +1204,6 @@ function RadarCharts() {
             const lightPink = "#C3A9C6";
             const lightBlue = "#53688B";
 
-            // Personality (left)
             const labelsPerson = [
                 "Intellect",
                 "Emotional Stability",
@@ -1226,7 +1224,6 @@ function RadarCharts() {
             ];
             const valuesPerson = [100, 90, 65, 80, 80, 85, 80, 45, 90, 10, 20, 95, 55, 60, 10, 80];
 
-            // Tech skills (right)
             const labelsTech = ["C++", "HTML", "Javascript", "Node.js", "SQL", "Python", "Java", "CSS"];
             const valuesTech = [5, 3, 4, 3, 4, 5, 5, 1];
 
@@ -1263,7 +1260,6 @@ function RadarCharts() {
                 };
             }
 
-            // Configs
             const chartOneData = baseConfig(labelsPerson, 0, 100, 20);
             (chartOneData as any).series = [
                 { values: valuesPerson, backgroundColor: lightPink, lineColor: lightPink },
@@ -1274,7 +1270,7 @@ function RadarCharts() {
                 { values: valuesTech, backgroundColor: lightBlue, lineColor: lightBlue },
             ];
 
-            // Render charts (height is 100% of our taller container)
+            // Render charts – height controlled via CSS on the containers
             zingchart.render({
                 id: "chartOne",
                 data: chartOneData,
@@ -1288,13 +1284,9 @@ function RadarCharts() {
                 width: "100%",
             });
 
-            // Lightweight runtime checks
             function assertOk(cond: boolean, msg: string) {
-                if (!cond) {
-                    console.error("Test failed:", msg);
-                } else {
-                    console.log("✓", msg);
-                }
+                if (!cond) console.error("Test failed:", msg);
+                else console.log("✓", msg);
             }
 
             function attachChecks(
@@ -1315,10 +1307,7 @@ function RadarCharts() {
                         );
                         assertOk(cfg.series[0].lineColor === color, id + ": Correct color");
                         const el = document.getElementById(id);
-                        assertOk(
-                            !!el && el.children.length > 0,
-                            id + ": Container populated"
-                        );
+                        assertOk(!!el && el.children.length > 0, id + ": Container populated");
                         assertOk(
                             cfg.scaleV.minValue === vMin && cfg.scaleV.maxValue === vMax,
                             id + ": Axis range"
@@ -1347,64 +1336,91 @@ function RadarCharts() {
                     zingchart.exec("chartOne", "destroy");
                     zingchart.exec("chartTwo", "destroy");
                 } catch {
-                    // ignore cleanup errors
+                    /* ignore */
                 }
             }
         };
     }, []);
 
     return (
-        <div className="mt-8">
+        <div>
             <style>{`
-        .radar-root {
-          --purple: #000000;
-          background-color: var(--purple);
-          border-radius: 16px;
-          padding: 16px;
-          margin-top: 8px;
-        }
+  .radar-root {
+    --purple: #000000;
+    background-color: var(--purple);
+    border-radius: 16px;
+    padding: 16px;
+  }
 
-        /* ⬆️ increased height to give labels more room */
-        .radar-main {
-          display: flex;
-          flex-wrap: wrap;
-          height: 420px;
-        }
-        .radar-section {
-          height: 110%;
-          width: 50%;
-        }
+  .radar-main {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-        @media (max-width: 750px) {
-          /* more height on mobile too */
-          .radar-main {
-            height: 520px;
-          }
-          .radar-section {
-            width: 100%;
-            height: 50%;
-          }
-        }
-      `}</style>
+  .radar-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .radar-heading {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgba(248, 250, 252, 0.75);
+    padding-left: 2px;
+    line-height: 1;
+    margin-bottom: -2px;
+  }
+
+  /* Skills header only */
+  .radar-block:last-of-type .radar-heading {
+    margin-bottom: -50px;
+  }
+
+  .radar-section {
+    width: 100%;
+    height: 420px;
+  }
+
+  @media (max-width: 750px) {
+    .radar-section {
+      height: 360px;
+    }
+  }
+`}</style>
             <div className="radar-root">
                 <div className="radar-main">
-                    <section
-                        id="chartOne"
-                        className="radar-section"
-                        role="img"
-                        aria-label="Radar chart with 16 personality traits (pink)"
-                    />
-                    <section
-                        id="chartTwo"
-                        className="radar-section"
-                        role="img"
-                        aria-label="Radar chart with 8 tech skills scored 1–5 (dark blue)"
-                    />
+                    {/* Top / pink chart */}
+                    <div className="radar-block">
+                        <div className="radar-heading">Personality</div>
+                        <section
+                            id="chartOne"
+                            className="radar-section"
+                            role="img"
+                            aria-label="Radar chart with 16 personality traits (pink)"
+                        />
+                    </div>
+
+                    {/* Bottom / blue chart */}
+                    <div className="radar-block">
+                        <div className="radar-heading">Skills</div>
+                        <section
+                            id="chartTwo"
+                            className="radar-section"
+                            role="img"
+                            aria-label="Radar chart with 8 tech skills scored 1–5 (dark blue)"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
+
+/* ============================== About I Can ================================ */
 
 function AboutICan() {
     const ref = React.useRef<HTMLDivElement | null>(null);
@@ -2126,22 +2142,28 @@ export default function App() {
                     <Section id="about" title="About" hint="Crisp bio + focus areas">
                         <AboutScroller />
 
-                        <RadarCharts />
+                        {/* Charts (left) + video (right, bigger & vertically centered) */}
+                        <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start">
+                            {/* LEFT: stacked radar charts, same size as before */}
+                            <RadarCharts />
 
-                        {/* Intro video under the radar charts */}
-                        {PROFILE.introVideo ? (
-                            <div className="mt-16 max-w-3xl mx-auto">
-                                <div className="relative overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
-                                    <video
-                                        className="aspect-video h-full w-full object-cover"
-                                        src={PROFILE.introVideo.src}
-                                        poster={PROFILE.introVideo.poster}
-                                        controls
-                                        playsInline
-                                    />
+                            {/* RIGHT: video, centered vertically next to the two charts */}
+                            {PROFILE.introVideo ? (
+                                <div className="w-full self-center flex justify-center">
+                                    <div className="relative w-full max-w-3xl lg:max-w-4xl">
+                                        <div className="overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
+                                            <video
+                                                className="w-full h-auto aspect-video object-cover"
+                                                src={PROFILE.introVideo.src}
+                                                poster={PROFILE.introVideo.poster}
+                                                controls
+                                                playsInline
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : null}
+                            ) : null}
+                        </div>
                     </Section>
 
 
