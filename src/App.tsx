@@ -2019,6 +2019,780 @@ function AboutScroller() {
     );
 }
 
+/* ================================== Cat ==================================== */
+function LongcatWithVideo() {
+    useEffect(() => {
+        if (!isBrowser) return;
+
+        const root = document.querySelector(".longcat-root") as HTMLElement | null;
+        if (!root) return;
+
+        const rightEye = root.querySelector(".right-eye") as HTMLDivElement | null;
+        const leftEye = root.querySelector(".left-eye") as HTMLDivElement | null;
+
+        const spriteOffset = -135; // base rotation eyes were drawn with in CSS
+
+        const updateEyeRotation = (e: MouseEvent) => {
+            [rightEye, leftEye].forEach((eye) => {
+                if (!eye) return;
+                const rect = eye.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const dx = e.clientX - cx;
+                const dy = e.clientY - cy;
+                const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+                const adjusted = angle + spriteOffset;
+                eye.style.transform = `rotate(${adjusted}deg)`;
+            });
+        };
+
+        window.addEventListener("mousemove", updateEyeRotation);
+
+        return () => {
+            window.removeEventListener("mousemove", updateEyeRotation);
+        };
+    }, []);
+
+    return (
+        <div className="longcat-root flex justify-end mt-50">
+            <style>{`
+        .longcat-root {
+          /* pulled from your :root block, scoped here */
+          --dur: 1s;
+          --hair: rgba(232, 232, 232, 1);
+          --hairT: rgba(232, 232, 232, 0);
+          --hairDark: rgba(209, 209, 209, 1);
+          --hairDarkT: rgba(209, 209, 209, 0);
+          --hairDarker: rgba(162, 162, 162, 1);
+          --ear: rgba(240, 192, 192, 1);
+          --earT: rgba(240, 192, 192, 0);
+          --mouth: rgba(224, 112, 112, 1);
+          --spacer: rgba(162, 162, 162, 1);
+          --spacerT: rgba(162, 162, 162, 0);
+          --pawPrint: rgba(139, 139, 139, 1);
+          --pawPrintT: rgba(139, 139, 139, 0);
+          --belly: rgba(197, 197, 197, 1);
+          --whisker: rgba(255, 255, 255, 1);
+          --whiskerRad: 0.2em;
+
+          position: relative;
+          width: 100%;
+
+        margin-top: 11rem;        /* push cat+video down in the About section */
+        display: flex;
+        justify-content: flex-end; /* push content toward the right of the column */
+        }
+
+        .longcat-root * {
+          box-sizing: border-box;
+        }
+
+        .longcat {
+        font-size: 0.5em;
+        margin-left: auto;   /* push cat to the right */
+        margin-right: 0;
+        margin-top: 2.5rem;  /* also nudge it lower inside the block */
+        width: 34.5em;
+        height: 100%;
+        min-height: 24rem;
+        transition: height 0.1s ease-out;
+        position: relative;
+        z-index: 1;
+
+          /* 👇 extra horizontal + vertical nudge */
+        margin-right: -35rem;   /* shifts cat further right */
+        margin-top: 2.8rem;  
+        }
+
+        /* === CAT PIECES (same as your template, just scoped) === */
+
+        .right-ear,
+        .left-ear,
+        .right-arm,
+        .right-paw,
+        .head,
+        .right-cheek,
+        .left-cheek,
+        .left-arm,
+        .left-paw,
+        .tail,
+        .tail-outer,
+        .tail-outer::after {
+          background-color: var(--hair);
+        }
+
+        .right-arm,
+        .right-paw,
+        .right-eye,
+        .left-eye,
+        .head,
+        .right-leg,
+        .left-leg {
+          border-radius: 50%;
+        }
+
+        .right-ear {
+          background-image: radial-gradient(
+            75% 225% at 25% 100%,
+            var(--ear),
+            var(--ear) 50%,
+            var(--earT) 51%
+          );
+          border-radius: 4em 4em 0 0 / 16em 16em 0 0;
+          width: 2em;
+          height: 4em;
+          top: 1em;
+          left: 11.5em;
+          transform: rotate(-40deg);
+          position: absolute;
+        }
+
+        .left-ear {
+          background-image: radial-gradient(
+            75% 188% at 50% 100%,
+            var(--ear),
+            var(--ear) 50%,
+            transparent 51%
+          );
+          border-radius: 8em 8em 0 0 / 16em 16em 0 0;
+          width: 3em;
+          height: 4em;
+          left: 20.5em;
+          transform: rotate(30deg);
+          position: absolute;
+        }
+
+        .right-arm {
+          z-index: 3;
+          background-image: linear-gradient(
+            var(--hairDarkT),
+            var(--hairDarkT) 30%,
+            var(--hairDark) 31%
+          );
+          width: 13em;
+          height: 4.5em;
+          top: 7em;
+          left: 3.5em;
+          transform: rotate(15deg);
+          position: absolute;
+        }
+
+        .right-paw {
+          z-index: 3;
+          background-image:
+            radial-gradient(
+              2.4em 2.6em at 1.8em 1.3em,
+              var(--hairDark),
+              var(--hairDark) 50%,
+              var(--hairDarkT) 51%
+            ),
+            radial-gradient(
+              2.4em 2.3em at 2.1em 1em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--hairDarkT) 51%
+            ),
+            radial-gradient(
+              2.4em 2.6em at 3.8em 1.3em,
+              var(--hairDark),
+              var(--hairDark) 50%,
+              var(--hairDarkT) 51%
+            ),
+            radial-gradient(
+              2.4em 2.4em at 4.1em 1.2em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 51%
+            ),
+            radial-gradient(
+              2.4em 2.6em at 4.9em 1.3em,
+              var(--hairDark),
+              var(--hairDark) 50%,
+              var(--hairDarkT) 51%
+            ),
+            radial-gradient(
+              2.4em 2.4em at 5.2em 1.2em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 51%
+            ),
+            linear-gradient(
+              var(--hairDark),
+              var(--hairDark) 72%,
+              var(--hairDarkT) 73%
+            );
+          border-radius: 3em;
+          width: 7.2em;
+          height: 3.6em;
+          top: 0.8em;
+          left: 0;
+          transform: rotate(165deg);
+          transform-origin: 1.8em 1.8em;
+          position: absolute;
+        }
+
+        .head {
+          z-index: 3;
+          background-image:
+            radial-gradient(
+              2em 2em at 38% 53%,
+              var(--hair),
+              var(--hair) 50%,
+              var(--hairT) 51%
+            ),
+            radial-gradient(
+              95% 80% at 45% 63%,
+              var(--hairDark),
+              var(--hairDark) 50%,
+              var(--hairDarkT) 51%
+            );
+          width: 12em;
+          height: 9em;
+          top: 2.8em;
+          left: 12em;
+          transform: rotate(-5deg);
+          position: absolute;
+        }
+
+        .right-eye,
+        .left-eye {
+          background-color: rgb(0, 0, 0);
+          box-shadow: 0 0.2em 0 0.2em rgb(160, 160, 80) inset;
+          width: 2em;
+          height: 2em;
+          top: 2.5em;
+          transition: transform 0.1s linear;
+          transform: rotate(-135deg);
+          position: absolute;
+        }
+
+        .right-eye {
+          left: 1.5em;
+        }
+
+        .left-eye {
+          left: 5.5em;
+        }
+
+        .nose-mouth {
+          background-color: var(--mouth);
+          background-image:
+            radial-gradient(
+              0.5em 0.5em at 0.8em 0.7em,
+              rgb(0, 0, 0),
+              rgb(0, 0, 0) 50%,
+              transparent 60%
+            ),
+            radial-gradient(
+              0.5em 0.5em at 1.6em 0.7em,
+              rgb(0, 0, 0),
+              rgb(0, 0, 0) 50%,
+              transparent 60%
+            ),
+            radial-gradient(
+              1.6em 0.1em at 1.2em 2.2em,
+              rgb(0, 0, 0),
+              rgb(0, 0, 0) 50%,
+              transparent 60%
+            );
+          border-radius: 50% 50% 33% 33%;
+          width: 2.5em;
+          height: 2.5em;
+          top: 4.5em;
+          left: 3.2em;
+          position: absolute;
+        }
+
+        .right-cheek,
+        .left-cheek {
+          background-color: var(--hairDark);
+          background-image:
+            radial-gradient(
+              var(--whiskerRad) var(--whiskerRad) at 0.6em 0.6em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 60%
+            ),
+            radial-gradient(
+              var(--whiskerRad) var(--whiskerRad) at 1.2em 0.3em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 60%
+            ),
+            radial-gradient(
+              var(--whiskerRad) var(--whiskerRad) at 1.8em 0.6em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 60%
+            ),
+            radial-gradient(
+              var(--whiskerRad) var(--whiskerRad) at 0.6em 1.2em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 60%
+            ),
+            radial-gradient(
+              var(--whiskerRad) var(--whiskerRad) at 1.2em 0.9em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 60%
+            ),
+            radial-gradient(
+              var(--whiskerRad) var(--whiskerRad) at 1.8em 1.2em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 60%
+            ),
+            radial-gradient(
+              var(--whiskerRad) var(--whiskerRad) at 1.2em 1.5em,
+              var(--spacer),
+              var(--spacer) 50%,
+              var(--spacerT) 60%
+            );
+          border-radius: 50%;
+          width: 2.5em;
+          height: 2em;
+          top: 5em;
+          position: absolute;
+        }
+
+        .right-cheek {
+          left: 2em;
+          transform: rotate(-8deg);
+        }
+
+        .left-cheek {
+          left: 4.4em;
+          transform: rotate(8deg);
+        }
+
+        .left-arm {
+          z-index: 3;
+          background-image: linear-gradient(
+            var(--hairDarkT),
+            var(--hairDarkT) 30%,
+            var(--hairDark) 31%
+          );
+          border-radius: 50%;
+          width: 10.5em;
+          height: 4.5em;
+          top: 6.5em;
+          left: 18.9em;
+          transform: rotate(40deg);
+          position: absolute;
+        }
+
+        .left-paw {
+          z-index: 3;
+          background-image:
+            radial-gradient(
+              0.6em 0.9em at 20% 60%,
+              var(--pawPrint),
+              var(--pawPrint) 50%,
+              var(--pawPrintT) 55%
+            ),
+            radial-gradient(
+              0.6em 0.9em at 38% 40%,
+              var(--pawPrint),
+              var(--pawPrint) 50%,
+              var(--pawPrintT) 55%
+            ),
+            radial-gradient(
+              0.6em 0.9em at 60% 40%,
+              var(--pawPrint),
+              var(--pawPrint) 50%,
+              var(--pawPrintT) 55%
+            ),
+            radial-gradient(
+              0.6em 0.9em at 80% 60%,
+              var(--pawPrint),
+              var(--pawPrint) 50%,
+              var(--pawPrintT) 55%
+            ),
+            radial-gradient(
+              1.5em 1.5em at 50% 75%,
+              var(--pawPrint),
+              var(--pawPrint) 50%,
+              var(--pawPrintT) 55%
+            ),
+            radial-gradient(
+              87% 87% at 54% 55%,
+              var(--hairDark),
+              var(--hairDark) 50%,
+              var(--pawPrintT) 51%
+            );
+          border-radius: 3em;
+          width: 4.5em;
+          height: 4.5em;
+          top: 0;
+          left: -1em;
+          transform: rotate(-50deg);
+          position: absolute;
+        }
+
+        .whisker {
+          border-top: 0.1em solid rgb(255, 255, 255);
+          width: 6em;
+          height: 0;
+          position: absolute;
+        }
+
+        .whisker:nth-child(n + 6):nth-child(-n + 10) {
+          transform-origin: 100% 0;
+        }
+
+        .whisker:nth-child(n + 11):nth-child(-n + 15) {
+          transform-origin: 0 0;
+        }
+
+        .whisker:nth-child(6) {
+          transform: rotate(5deg);
+          top: 5.2em;
+          left: -2.8em;
+        }
+
+        .whisker:nth-child(7) {
+          transform: rotate(-3deg);
+          top: 5.6em;
+          left: -3.4em;
+        }
+
+        .whisker:nth-child(8) {
+          transform: rotate(-13deg);
+          top: 5.9em;
+          left: -2.8em;
+        }
+
+        .whisker:nth-child(9) {
+          transform: rotate(-20deg);
+          top: 6.2em;
+          left: -3.4em;
+        }
+
+        .whisker:nth-child(10) {
+          transform: rotate(-29deg);
+          top: 6.5em;
+          left: -2.7em;
+        }
+
+        .whisker:nth-child(11) {
+          transform: rotate(5deg);
+          top: 5.2em;
+          left: 5.7em;
+        }
+
+        .whisker:nth-child(12) {
+          transform: rotate(7deg);
+          top: 5.6em;
+          left: 6.2em;
+        }
+
+        .whisker:nth-child(13) {
+          transform: rotate(12deg);
+          top: 5.8em;
+          left: 5.6em;
+        }
+
+        .whisker:nth-child(14) {
+          transform: rotate(18deg);
+          top: 6.2em;
+          left: 6.2em;
+        }
+
+        .whisker:nth-child(15) {
+          transform: rotate(21deg);
+          top: 6.5em;
+          left: 5.5em;
+        }
+
+        .torso {
+          animation: hang var(--dur) linear infinite alternate;
+          background-color: var(--belly);
+          border-radius: 2.5em / 16em 16em 2em 2em;
+          box-shadow: -0.3em 0 0 2em var(--hairDark) inset;
+          top: 8.4em;
+          left: 13.5em;
+          min-height: 28em;
+          height: calc(100% - 32em);
+          width: 11.5em;
+          position: absolute;
+          transform-origin: 5.7em 0;
+          transition: height 0.25s ease-out;
+        }
+
+        .bottom {
+          background-color: var(--belly);
+          border-radius: 0 0 8em 8em / 0 0 16em 16em;
+          box-shadow: -0.3em -2em 0 2em var(--hairDark) inset;
+          top: calc(100% - 2em);
+          width: 100%;
+          height: 10em;
+          position: relative;
+        }
+
+        .bottom::after {
+          content: "";
+          display: block;
+          width: 100%;
+          height: 6em;
+        }
+
+        .tail,
+        .tail-outer {
+          background-image: linear-gradient(
+            var(--hairDarkT),
+            var(--hairDarkT) 30%,
+            var(--hairDark) 31%
+          );
+          border-radius: 0 2em 2em 0;
+          height: 4em;
+          position: absolute;
+        }
+
+        .tail {
+          animation: wagTail calc(var(--dur) * 2) ease-in infinite alternate;
+          width: 10em;
+          top: 0;
+          left: 50%;
+          transform: rotate(30deg);
+          transform-origin: 0 2em;
+          z-index: -1;
+        }
+
+        .tail-outer {
+          animation: wagOuterTail calc(var(--dur) * 2) ease-in infinite alternate;
+          transform: rotate(-30deg);
+          transform-origin: 0 2em;
+          width: 8em;
+          left: 8em;
+        }
+
+        .tail-outer::after {
+          background-image: linear-gradient(
+            160deg,
+            var(--hairDarkT),
+            var(--hairDarkT) 40%,
+            var(--hairDark) 41%
+          );
+          border-left: 0.1em solid var(--hairDarker);
+          border-radius: 50%;
+          content: "";
+          display: block;
+          margin-left: auto;
+          height: 4em;
+          width: 4em;
+        }
+
+        .right-leg,
+        .left-leg,
+        .right-lower-leg,
+        .left-lower-leg,
+        .right-foot,
+        .left-foot {
+          background-color: var(--hairDark);
+          z-index: -2;
+          position: absolute;
+        }
+
+        .right-leg,
+        .left-leg {
+          animation: pivotLeg var(--dur) linear infinite alternate;
+          top: 2em;
+          height: 13em;
+          width: 5.5em;
+          transform-origin: 2.7em 2.7em;
+        }
+
+        .left-leg {
+          right: 0;
+        }
+
+        .right-lower-leg,
+        .left-lower-leg {
+          border-radius: 15% 15% 50% 50%;
+          top: 73%;
+          height: 9em;
+          width: 4.4em;
+          transform-origin: 2.2em 2.2em;
+        }
+
+        .right-lower-leg {
+          left: 0.6em;
+          transform: rotate(-5deg);
+        }
+
+        .left-lower-leg {
+          left: 0.3em;
+          transform: rotate(5deg);
+        }
+
+        .right-foot,
+        .left-foot {
+          background-image:
+            radial-gradient(
+              0.3em 1.5em at 25% 93%,
+              var(--spacer),
+              var(--spacer) 50%,
+              transparent 60%
+            ),
+            radial-gradient(
+              0.3em 1.5em at 50% 93%,
+              var(--spacer),
+              var(--spacer) 50%,
+              transparent 60%
+            ),
+            radial-gradient(
+              0.3em 1.5em at 75% 93%,
+              var(--spacer),
+              var(--spacer) 50%,
+              transparent 60%
+            );
+          border-radius: 2em;
+          transform-origin: 1em 1em;
+          top: 67%;
+          left: 0.5em;
+          height: 8.4em;
+          width: 3.5em;
+        }
+
+        .right-foot {
+          transform: rotate(15deg);
+        }
+
+        .left-foot {
+          transform: rotate(-15deg);
+        }
+
+        .barrier {
+          width: 100%;
+          height: 1.5em;
+        }
+
+        @keyframes hang {
+          from {
+            transform: rotate(0.5deg);
+          }
+          to {
+            transform: rotate(-0.5deg);
+          }
+        }
+
+        @keyframes pivotLeg {
+          from {
+            transform: rotate(1.5deg);
+          }
+          to {
+            transform: rotate(-1.5deg);
+          }
+        }
+
+        @keyframes wagTail {
+          from,
+          50% {
+            transform: rotate(30deg);
+          }
+          to {
+            transform: rotate(20deg);
+          }
+        }
+
+        @keyframes wagOuterTail {
+          from,
+          50% {
+            transform: rotate(-30deg);
+          }
+          to {
+            transform: rotate(-60deg);
+          }
+        }
+
+        /* TEMPLATE-STYLE VIDEO, BUT SAFE INSIDE THE COLUMN */
+        .longcat-video-wrapper {
+        position: absolute;
+        top: 18vh;           /* was 11.5vh – lower on screen */
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(60vw, 100%);
+        max-width: 800px;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        border-radius: 1.5rem;
+        z-index: 2;
+        }
+
+        .longcat-video-wrapper video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        @media (max-width: 1024px) {
+          .longcat {
+            font-size: 0.45em;
+          }
+          .longcat-video-wrapper {
+            top: 12vh;
+            width: 100%;
+            max-width: 600px;
+          }
+        }
+
+      `}</style>
+
+            <div className="longcat">
+                <div className="right-ear" />
+                <div className="left-ear" />
+                <div className="right-arm">
+                    <div className="right-paw" />
+                </div>
+                <div className="torso">
+                    <div className="bottom">
+                        <div className="tail">
+                            <div className="tail-outer" />
+                        </div>
+                        <div className="right-leg">
+                            <div className="right-lower-leg">
+                                <div className="right-foot" />
+                            </div>
+                        </div>
+                        <div className="left-leg">
+                            <div className="left-lower-leg">
+                                <div className="left-foot" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="head">
+                    <div className="right-eye" />
+                    <div className="left-eye" />
+                    <div className="nose-mouth" />
+                    <div className="right-cheek" />
+                    <div className="left-cheek" />
+                    {/* Whiskers */}
+                    {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="whisker" />
+                    ))}
+                </div>
+                <div className="left-arm">
+                    <div className="left-paw" />
+                </div>
+            </div>
+
+            {/* Template-style video overlaying the cat */}
+            <div className="longcat-video-wrapper border border-zinc-200 shadow-sm dark:border-zinc-800">
+                <video
+                    src={PROFILE.introVideo?.src}
+                    poster={PROFILE.introVideo?.poster}
+                    controls
+                    playsInline
+                />
+            </div>
+
+            <div className="barrier" />
+        </div>
+    );
+}
 
 /* ================================== App ==================================== */
 export default function App() {
@@ -2139,30 +2913,35 @@ export default function App() {
                     </section>
 
                     {/* About */}
+                    <style>{`
+  .video-wrapper {
+    /* template geometry, but column-safe */
+    position: relative;
+    width: min(60vw, 100%);
+    max-width: 800px;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    z-index: 1;
+  }
+
+  .video-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+`}</style>
+
                     <Section id="about" title="About" hint="Crisp bio + focus areas">
                         <AboutScroller />
 
-                        {/* Charts (left) + video (right, bigger & vertically centered) */}
-                        <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start">
-                            {/* LEFT: stacked radar charts, same size as before */}
+                        <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start">
+                            {/* LEFT: stacked Personality + Skills charts */}
                             <RadarCharts />
 
-                            {/* RIGHT: video, centered vertically next to the two charts */}
-                            {PROFILE.introVideo ? (
-                                <div className="w-full self-center flex justify-center">
-                                    <div className="relative w-full max-w-3xl lg:max-w-4xl">
-                                        <div className="overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-800">
-                                            <video
-                                                className="w-full h-auto aspect-video object-cover"
-                                                src={PROFILE.introVideo.src}
-                                                poster={PROFILE.introVideo.poster}
-                                                controls
-                                                playsInline
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : null}
+                            {/* RIGHT: longcat + big template-style video */}
+                            <LongcatWithVideo />
                         </div>
                     </Section>
 
