@@ -2903,7 +2903,7 @@ export default function App() {
                   ))}
                 </div>
                 <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                  Based in {PROFILE.location}
+                  Actively seeking internships for Summer 2026!
                 </p>
               </div>
 
