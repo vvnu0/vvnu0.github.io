@@ -1126,10 +1126,10 @@ function CompaniesTicker() {
 
       <div className="base-template__wrapper">
         <h2 className="base-template__title text-3xl md:text-5xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-          Where I've Built Things
+          Where I've Innovated
         </h2>
         <div className="base-template__text mx-auto max-w-2xl text-zinc-600 dark:text-zinc-400">
-          A seamless continuous ticker featuring places I've worked and interned.
+          Places I've worked and interned.
         </div>
 
         <div className="base-template__content">
@@ -2101,7 +2101,7 @@ function LongcatWithVideo() {
 
           /* 👇 extra horizontal + vertical nudge */
         margin-right: -35rem;   /* shifts cat further right */
-        margin-top: 2.8rem;  
+        margin-top: 2.5rem;  
         }
 
         /* === CAT PIECES (same as your template, just scoped) === */
@@ -2933,7 +2933,7 @@ export default function App() {
   }
 `}</style>
 
-          <Section id="about" title="About" hint="Crisp bio + focus areas">
+          <Section id="about" title="About" hint="Who I am + what I do">
             <AboutScroller />
 
             <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start">
