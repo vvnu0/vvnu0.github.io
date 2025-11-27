@@ -10,6 +10,6 @@ export default defineConfig({
     plugins: [react()],
     base, // keeps your user-page / project-page support
     build: {
-        outDir: "docs", // 👈 new: put the built site into /docs
+        outDir: "dist", // 👈 new: put the built site into /docs
     },
 });
