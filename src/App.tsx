@@ -17,7 +17,7 @@ const PROFILE = {
     linkedin: "https://linkedin.com/in/vishnunair0/",
   },
   introVideo: {
-    src: "/WIN_20251019_18_31_08_Pro.mp4",
+    src: "/intro-video.mp4",
     poster: "/intro-poster.jpg", // optional placeholder image
   },
 } as const;
@@ -31,7 +31,7 @@ const PROJECTS = [
     stack: ["TypeScript", "Chrome Ext", "AWS", "HLS"],
     image:
       "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?q=80&w=1600&auto=format&fit=crop",
-    link: "https://github.com/vvnu0",
+    link: "https://github.com/vvnu0/SharprAI",
     metrics: [8, 12, 9, 14, 18, 21, 19, 24, 28, 33, 29, 35],
     outcome: "30% smoother playback at 1.5× bitrate; 200ms median segment latency",
   },
@@ -55,7 +55,7 @@ const PROJECTS = [
     stack: ["C", "RESP", "Unix Sockets"],
     image:
       "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1600&auto=format&fit=crop",
-    link: "https://github.com/vvnu0",
+    link: "https://docs.google.com/presentation/d/1g30xRxu8NydZxubn_knU5c3w4Xsnj66fYI2gSlSdnoE/edit?slide=id.p#slide=id.p",
     metrics: [1, 3, 5, 8, 13, 21, 34, 29, 31, 28, 36, 40],
     outcome: ">1.2M ops/s on M2 — 99p latency under 4ms",
   },
@@ -212,6 +212,11 @@ function IntroOverlay({ onDismiss, fading }: { onDismiss: () => void; fading: bo
       <h1 className="intro-title">
         Welcome <strong>stranger</strong>
       </h1>
+
+      {/* New skip hint */}
+      <p className="pointer-events-none absolute bottom-6 right-6 text-xs text-zinc-300 opacity-80">
+        Press to skip
+      </p>
     </div>
   );
 }
@@ -1064,7 +1069,7 @@ function CompaniesTicker() {
         "MIT Lincoln Lab": { bg: "#EDEDED", text: "#002B52" },
         "Cornell Data Science": { bg: "#5A2FA0", text: "#000000" },
         "Beats by Dre": { bg: "#B81831", text: "#000000" },
-        "Millennium Management": { bg: "#000000", text: "#0026C2" },
+        "Millennium Management": { bg: "#0026C2", text: "#000000" },
         "NumberOne AI": { bg: "#0B1220", text: "#FFFFFF" },
       };
 
@@ -2794,6 +2799,219 @@ function LongcatWithVideo() {
   );
 }
 
+/* =========================== Where I Can Work ============================ */
+
+const SLIDES = [
+  {
+    city: "New York",
+    key: "one",
+    imageUrl:
+      "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/new-york.jpg",
+  },
+  {
+    city: "San Francisco & Bay",
+    key: "two",
+    imageUrl:
+      "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/san-fran.jpeg",
+  },
+  {
+    city: "Austin",
+    key: "three",
+    imageUrl:
+      "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/austin.jpeg",
+  },
+  {
+    city: "Seattle",
+    key: "four",
+    imageUrl:
+      "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/seattle.jpg",
+  },
+  {
+    city: "Atlanta",
+    key: "five",
+    imageUrl:
+      "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/atlanta.jpg",
+  },
+  {
+    city: "Boston",
+    key: "six",
+    imageUrl:
+      "https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/boston.jpg",
+  },
+];
+
+function WhereICanWork() {
+  const [index, setIndex] = useState(0);
+
+  // Auto-advance the background every 5 seconds
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % SLIDES.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="mt-16">
+      <h3 className="text-center text-xl md:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 mb-4">
+        Where I can Work
+      </h3>
+
+      <div className="w-full flex items-center justify-center rounded-2xl bg-black py-6">
+        {/* Custom CSS for the effect */}
+        <style>{`
+          .frame {
+            border: 5px solid #fff;
+            width: 95%;
+            max-width: 2000px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+            margin: auto;
+          }
+
+          .hero-root {
+            position: relative;
+            width: 100%;
+            height: 100%;
+          }
+
+          .slide-layer {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+          }
+
+          .slide-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 0.8s ease-in-out;
+            opacity: 0;
+          }
+
+          .slide-bg.is-active {
+            opacity: 1;
+          }
+
+          .hero-image {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 300px;
+            width: 50vw;
+            filter: contrast(90%);
+            z-index: 5;
+            pointer-events: none;
+          }
+
+          .city-title {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(2.8rem, 6vw, 3.5rem);
+            letter-spacing: 0.3rem;
+            z-index: 6;
+            color: transparent;
+            background-position: 0 0;
+            background-size: 200% auto;
+            animation: animated-text 20s linear infinite;
+            text-transform: uppercase;
+            text-align: center;
+            white-space: nowrap;
+          }
+
+          @keyframes animated-text {
+            100% {
+              background-position: 200% 0;
+            }
+          }
+
+          /* Green-ish texture variant */
+          .title-one,
+          .title-five {
+            -webkit-text-stroke: 1px rgba(16, 104, 31, 0.8);
+            text-stroke: 1px rgba(16, 104, 31, 0.8);
+            background-image: url("https://github.com/ecemgo/mini-samples-great-tricks/assets/13468728/e9d06cb6-2844-49ed-9bde-23d3364b9fa4");
+            -webkit-background-clip: text;
+            background-clip: text;
+          }
+
+          /* White outline texture variant */
+          .title-two,
+          .title-three,
+          .title-four,
+          .title-six {
+            -webkit-text-stroke: 1px #ffffff;
+            text-stroke: 1px #ffffff;
+            background-image: url("https://github.com/ecemgo/mini-samples-great-tricks/assets/13468728/ba4edde6-822d-437a-88c2-f54392d7a56f");
+            -webkit-background-clip: text;
+            background-clip: text;
+          }
+
+          /* Dark overlay so text stays readable */
+          .overlay-shade {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(0,0,0,0.1), rgba(0,0,0,0.6));
+            z-index: 2;
+          }
+        `}</style>
+
+        <div className="frame">
+          <div className="hero-root">
+            {/* Background slides */}
+            <div className="slide-layer">
+              {SLIDES.map((slide, i) => (
+                <div
+                  key={slide.city}
+                  className={`slide-bg ${i === index ? "is-active" : ""}`}
+                  style={{ backgroundImage: `url(${slide.imageUrl})` }}
+                />
+              ))}
+              <div className="overlay-shade" />
+
+              {/* Animated city title corresponding to current slide */}
+              {SLIDES.map((slide, i) => {
+                const titleClass =
+                  slide.key === "one" || slide.key === "five"
+                    ? "title-one"
+                    : "title-two"; // two/three/four/six share the same style
+
+                return (
+                  <h1
+                    key={slide.city}
+                    className={`city-title ${titleClass}`}
+                    style={{
+                      opacity: i === index ? 1 : 0,
+                      transition: "opacity 0.5s ease-in-out",
+                    }}
+                  >
+                    {slide.city}
+                  </h1>
+                );
+              })}
+            </div>
+
+            {/* Fixed hero image in front of everything, inside the frame */}
+            <img
+              className="hero-image"
+              src="https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/me-table.png"
+              alt="Traveler hero"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ================================== App ==================================== */
 export default function App() {
   const [intro, setIntro] = useState(true);
@@ -2839,7 +3057,12 @@ export default function App() {
           <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <div
-                className="h-8 w-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-fuchsia-500"
+                className="h-10 w-10 rounded-full border-[2px] border-white shadow-sm bg-center bg-cover"
+                style={{
+                  backgroundImage:
+                    "url('https://raw.githubusercontent.com/vvnu0/vvnu0.github.io/main/public/pfp.png')",
+                  backgroundSize: "130%",
+                }}
                 aria-hidden
               />
               <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-white">
@@ -2903,7 +3126,9 @@ export default function App() {
                   ))}
                 </div>
                 <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                  Actively seeking internships for Summer 2026!
+                  <strong><i>
+                    Actively seeking internships for Summer 2026!
+                  </i></strong>
                 </p>
               </div>
 
@@ -2933,7 +3158,7 @@ export default function App() {
   }
 `}</style>
 
-          <Section id="about" title="About" hint="Who I am + what I do">
+          <Section id="about" title="About">
             <AboutScroller />
 
             <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start">
@@ -2943,6 +3168,8 @@ export default function App() {
               {/* RIGHT: longcat + big template-style video */}
               <LongcatWithVideo />
             </div>
+            {/* Where I can Work – still part of About, before Projects */}
+            <WhereICanWork />
           </Section>
 
 
