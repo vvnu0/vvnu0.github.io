@@ -575,7 +575,7 @@ function StackShowcase() {
 
             <div className="mt-4">
               <div className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                Where I&apos;ve used this
+                Where I&apos;ve used this: Click the name &amp; learn more!
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                 {experiences[current.id].map((exp) => {
