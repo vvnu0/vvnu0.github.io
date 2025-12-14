@@ -1,5 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Mail, Github, Linkedin, ExternalLink, Download } from "lucide-react";
+import {
+  Mail,
+  Github,
+  Linkedin,
+  ExternalLink,
+  Download,
+  Youtube,
+  Monitor,
+  Database,
+  Settings,
+  Cloud,
+} from "lucide-react";
 
 /* ============================== Constants =============================== */
 const INTRO_MS = 6500; // ~6.5s (4.5s + 2s)
@@ -36,14 +47,14 @@ const PROJECTS = [
     outcome: "30% smoother playback at 1.5× bitrate; 200ms median segment latency",
   },
   {
-    title: "LLM Guidance Counselor",
+    title: "Cornell Wex - Law Assistant",
     description:
-      "An AI assistant that suggests clubs, courses, and scholarships for first-gen students.",
+      "An AI assistant aiming to improve the Legal Information Institute's (LII) Wex legal dictionary and encyclopedia. Uses RAG to answer questions and improve the quality of the Wex database.",
     year: 2024,
     stack: ["Python", "FastAPI", "RAG", "Postgres"],
     image:
       "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1600&auto=format&fit=crop",
-    link: "https://github.com/vvnu0",
+    link: "https://github.com/yl3698/Hackathon",
     metrics: [2, 4, 6, 5, 9, 12, 11, 15, 16, 18, 22, 25],
     outcome: "Cut advising backlog by ~25% in pilot; NPS +34",
   },
@@ -58,6 +69,32 @@ const PROJECTS = [
     link: "https://docs.google.com/presentation/d/1g30xRxu8NydZxubn_knU5c3w4Xsnj66fYI2gSlSdnoE/edit?slide=id.p#slide=id.p",
     metrics: [1, 3, 5, 8, 13, 21, 34, 29, 31, 28, 36, 40],
     outcome: ">1.2M ops/s on M2 — 99p latency under 4ms",
+  },
+  {
+    title: "CardCamel – Terminal Flashcard App",
+    description:
+      "OCaml-powered, terminal-based flashcard app with decks, CSV import, quizzes, and arcade-style study games.",
+    year: 2025,
+    stack: ["OCaml", "Javascript", "CSV"],
+    image:
+      "https://images.unsplash.com/photo-1526498460520-4c246339dccb?q=80&w=1600&auto=format&fit=crop",
+    link: "https://github.coecis.cornell.edu/ak2488/CS3110_Final_Project?tab=readme-ov-file",
+    videoUrl: "https://www.youtube.com/watch?v=jkB9WCAvKm0",
+    metrics: [3, 5, 7, 10, 12, 15, 18, 20, 23, 25, 27, 30],
+    outcome: "Keeps studying focused with CLI flashcards, progress tracking, and fast review loops.",
+  },
+  {
+    title: "Nasa Research Paper",
+    description:
+      "Analyzes how atmospheric river frequency and associated jet and storm-track changes evolve from past to future climates using NASA GISS-E2.1, GRACE(-FO), and IMERG observations.",
+    year: 2024,
+    stack: ["ML-ANN, Trees", "TensorFlow", "Pandas", "Matplotlib"],
+    image:
+      "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa",
+    link: "https://docs.google.com/presentation/d/1cfmq9RZVlFw6Qo6D-Tlfabq1SiM15N5T/edit?usp=sharing&ouid=116565074322771346948&rtpof=true&sd=true",
+    metrics: [2, 3, 4, 6, 7, 9, 11, 13, 15, 16, 18, 20],
+    outcome:
+      "First research on South American glacial melt affecting farmers & West Antartic ice melt.",
   },
 ] as const;
 
@@ -257,7 +294,7 @@ function Section({
 }
 
 // Lightweight SVG sparkline (no recharts needed)
-function Sparkline({ values }: { values: number[] }) {
+function Sparkline({ values }: { values: readonly number[] }) {
   const points = useMemo(() => {
     if (!values || values.length === 0) return "";
 
@@ -312,12 +349,339 @@ function Sparkline({ values }: { values: number[] }) {
   );
 }
 
-function ProjectCard({ p }: { p: (typeof PROJECTS)[number] }) {
+function GoogleSlidesIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <rect x="4" y="3" width="14" height="18" rx="2" ry="2" fill="#F4B400" />
+      <rect x="7" y="8" width="8" height="6" rx="1" ry="1" fill="#FDE293" />
+      <rect x="7" y="15" width="5" height="1.5" fill="#FDE293" />
+    </svg>
+  );
+}
+
+type StackArea = "frontend" | "backend" | "data" | "infra";
+
+function StackShowcase() {
+  const [active, setActive] = useState<StackArea>("frontend");
+  const [activeExperience, setActiveExperience] = useState<{
+    area: StackArea;
+    company: string;
+    line: string;
+    color: string;
+  } | null>(null);
+
+  const layers = [
+    {
+      id: "frontend" as const,
+      title: "Frontend & UX",
+      blurb:
+        "Turning ideas into responsive, accessible interfaces that feel fast and predictable.",
+      tech: ["React", "TypeScript", "Tailwind CSS", "Vite", "Next.js"],
+      icon: Monitor,
+      accent: "from-sky-500/40 to-cyan-500/20",
+    },
+    {
+      id: "backend" as const,
+      title: "APIs & Services",
+      blurb:
+        "Designing clear APIs and services that stay boring in production: predictable latency, good logs, and simple failure modes.",
+      tech: ["Python", "FastAPI", "Node.js", "PostgreSQL", "REST / JSON"],
+      icon: Database,
+      accent: "from-emerald-500/35 to-teal-500/20",
+    },
+    {
+      id: "data" as const,
+      title: "Data, ML & Analytics",
+      blurb:
+        "Building data flows and models that are explainable, inspectable, and actually used by downstream features.",
+      tech: ["TensorFlow", "Pandas", "Matplotlib", "RAG", "GRACE / IMERG datasets"],
+      icon: Settings,
+      accent: "from-amber-400/45 to-orange-500/25",
+    },
+    {
+      id: "infra" as const,
+      title: "Infrastructure & Tooling",
+      blurb:
+        "Keeping projects deployable with small, well-scoped bits of infra and automation rather than giant platforms.",
+      tech: ["AWS", "Docker", "GitHub Actions", "Nginx", "Linux"],
+      icon: Cloud,
+      accent: "from-indigo-500/40 to-purple-500/25",
+    },
+  ];
+
+  const current = layers.find((l) => l.id === active) ?? layers[0];
+
+  const experiences: Record<
+    StackArea,
+    { company: string; line: string; color: string }[]
+  > = {
+    frontend: [
+      {
+        company: "Coinbase",
+        line:
+          "ATO monitoring dashboard · real-time triage UX · anomaly drill-downs · on-call workflows.",
+        color: "text-sky-400",
+      },
+      {
+        company: "NASA",
+        line:
+          "Interactive scientific dashboards · Plotly Dash · exploratory model validation.",
+        color: "text-emerald-400",
+      },
+      {
+        company: "Strategy of Things",
+        line:
+          "React web app · user journeys · usability-driven frontend design.",
+        color: "text-amber-400",
+      },
+    ],
+    backend: [
+      {
+        company: "NumberOne AI",
+        line:
+          "Go REST APIs · LLM safety services · few-shot pipelines · cloud-deployed microservices.",
+        color: "text-indigo-300",
+      },
+      {
+        company: "Coinbase",
+        line:
+          "Fraud review service · low-latency decision pipeline · retrieval + model inference.",
+        color: "text-sky-400",
+      },
+    ],
+    data: [
+      {
+        company: "Coinbase",
+        line:
+          "Fraud modeling core · XGBoost + SMOTE · LLM retrieval · production metrics.",
+        color: "text-sky-400",
+      },
+      {
+        company: "Beats by Dre",
+        line:
+          "ETL pipelines · large-scale reviews + commerce data · NLP sentiment models.",
+        color: "text-rose-400",
+      },
+      {
+        company: "NASA",
+        line:
+          "Flood & climate ML · multispectral + SMAP data · statistical modeling.",
+        color: "text-emerald-400",
+      },
+      {
+        company: "MIT",
+        line:
+          "Geospatial forecasting · CNNs for remote sensing · disaster impact prediction.",
+        color: "text-violet-400",
+      },
+    ],
+    infra: [
+      {
+        company: "Coinbase",
+        line:
+          "ML orchestration stack · Kafka · Airflow · feature stores · Ray · alerting pipelines.",
+        color: "text-sky-400",
+      },
+      {
+        company: "NumberOne AI",
+        line:
+          "Kubernetes · Docker · GitLab CI/CD · microservices · serverless deployment.",
+        color: "text-indigo-300",
+      },
+      {
+        company: "Beats by Dre",
+        line:
+          "Airflow-backed analytics infra · reproducible, production ETL.",
+        color: "text-rose-400",
+      },
+    ],
+  };
+
+  return (
+    <section aria-label="Full-stack experience" className="mt-16">
+      <div className="max-w-5xl">
+        <div className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+          Stacks I've touched
+        </div>
+        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+          From frontend to infra. Click a layer of the stack to see where and when I&apos;ve shipped the most.
+        </p>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+          <div className="relative space-y-3">
+            <div className="pointer-events-none absolute inset-x-6 top-3 bottom-6 hidden lg:block">
+              <div className="mx-auto h-full w-px bg-gradient-to-b from-zinc-700/60 via-zinc-600/40 to-transparent" />
+            </div>
+            {layers.map((layer, index) => {
+              const isActive = layer.id === active;
+              const Icon = layer.icon;
+              return (
+                <button
+                  key={layer.id}
+                  type="button"
+                  onClick={() => setActive(layer.id)}
+                  className={`group relative w-full rounded-2xl border bg-gradient-to-br p-3 text-left transition duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${isActive
+                    ? `border-indigo-400/70 shadow-lg shadow-indigo-500/40 ${layer.accent}`
+                    : "border-zinc-700/70 from-zinc-950/90 to-zinc-900/70"
+                    }`}
+                  style={{
+                    transform: `translateZ(${isActive ? 8 : 0}px) translateY(${isActive ? -4 : 6 * index
+                      }px)`,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl border text-zinc-50 ${isActive
+                        ? "border-white/80 bg-white/10"
+                        : "border-zinc-600 bg-zinc-900/80"
+                        }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-1 items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                          {index === 0 && "Frontend"}
+                          {index === 1 && "Backend"}
+                          {index === 2 && "Data & ML"}
+                          {index === 3 && "Infra"}
+                        </div>
+                        <div className="mt-0.5 text-sm font-medium text-zinc-50">
+                          {layer.title}
+                        </div>
+                      </div>
+                      <div
+                        className={`h-8 w-8 rounded-full border text-[0.6rem] font-semibold uppercase tracking-[0.16em] flex items-center justify-center ${isActive
+                          ? "border-indigo-300/80 bg-indigo-500/30 text-indigo-50"
+                          : "border-zinc-600 bg-zinc-900/80 text-zinc-300"
+                          }`}
+                      >
+                        {index + 1}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white/80 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-500">
+              {current.title}
+            </div>
+            <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+              {current.blurb}
+            </p>
+
+            <div className="mt-4">
+              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                Where I&apos;ve used this
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                {experiences[current.id].map((exp) => {
+                  const isSelected =
+                    activeExperience &&
+                    activeExperience.area === current.id &&
+                    activeExperience.company === exp.company;
+                  return (
+                    <button
+                      key={`${current.id}-${exp.company}`}
+                      type="button"
+                      onClick={() =>
+                        setActiveExperience((prev) =>
+                          prev &&
+                            prev.area === current.id &&
+                            prev.company === exp.company
+                            ? null
+                            : {
+                              area: current.id,
+                              company: exp.company,
+                              line: exp.line,
+                              color: exp.color,
+                            }
+                        )
+                      }
+                      className={`rounded-full border px-2.5 py-1 text-[0.7rem] font-medium transition hover:-translate-y-0.5 hover:shadow-sm ${isSelected
+                        ? "border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/10 dark:text-indigo-200"
+                        : "border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        }`}
+                    >
+                      <span className={`underline-offset-2 ${exp.color}`}>
+                        {exp.company}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {activeExperience && activeExperience.area === current.id && (
+                <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/90 p-3 text-[0.7rem] leading-relaxed text-zinc-700 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-semibold ${activeExperience.color}`}>
+                      {activeExperience.company}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveExperience(null)}
+                      className="rounded-full px-2 py-0.5 text-[0.65rem] text-zinc-500 hover:bg-zinc-200/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <ul className="mt-2 list-disc space-y-1 pl-4">
+                    {activeExperience.line
+                      .split("·")
+                      .map((part) => part.trim())
+                      .filter(Boolean)
+                      .map((part) => (
+                        <li key={part}>{part}</li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type Project = (typeof PROJECTS)[number] & { videoUrl?: string };
+
+function ProjectCard({
+  p,
+  onOpenSlides,
+  onOpenVideo,
+}: {
+  p: Project;
+  onOpenSlides?: (url: string) => void;
+  onOpenVideo?: (meta: { youtubeUrl: string; githubUrl?: string; title: string }) => void;
+}) {
+  const isGithub = p.link.includes("github.com") || p.link.includes("github.coecis.cornell.edu");
+  const isSlides = p.link.includes("docs.google.com/presentation");
+  const hasVideo = Boolean(p.videoUrl);
+  const DestIcon = isSlides ? GoogleSlidesIcon : hasVideo ? Youtube : isGithub ? Github : ExternalLink;
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isSlides && onOpenSlides) {
+      e.preventDefault();
+      onOpenSlides(p.link);
+      return;
+    }
+
+    if (hasVideo && onOpenVideo && p.videoUrl) {
+      e.preventDefault();
+      onOpenVideo({ youtubeUrl: p.videoUrl, githubUrl: p.link, title: p.title });
+    }
+  };
+
   return (
     <a
       href={p.link}
       target="_blank"
       rel="noreferrer noopener"
+      onClick={handleClick}
       className="group relative block overflow-hidden rounded-2xl border border-zinc-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-zinc-800 dark:bg-zinc-900/60"
     >
       <div className="flex gap-4">
@@ -346,8 +710,8 @@ function ProjectCard({ p }: { p: (typeof PROJECTS)[number] }) {
           <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">{p.outcome}</p>
         </div>
       </div>
-      <ExternalLink
-        className="absolute right-3 top-3 h-4 w-4 text-zinc-400 transition group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+      <DestIcon
+        className="absolute right-3 bottom-3 h-4 w-4 text-zinc-400 transition group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
         aria-hidden
       />
     </a>
@@ -1179,173 +1543,27 @@ function CompaniesTicker() {
 
 /* ============================== Radar Charts =============================== */
 function RadarCharts() {
-  useEffect(() => {
-    if (!isBrowser) return;
+  const personality = [
+    { label: "Strategic Thinking", value: 95 },
+    { label: "Decisiveness", value: 90 },
+    { label: "Leadership", value: 90 },
+    { label: "Vision-Driven", value: 85 },
+    { label: "Efficiency Focused", value: 80 },
+    { label: "Confidence", value: 85 },
+    { label: "Adaptability", value: 70 },
+    { label: "Action Oriented", value: 92 }
+  ];
 
-    // Load Nunito font + ZingChart once
-    ensureLinkOnce(
-      "https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap",
-      "nunito-font"
-    );
-
-    let disposed = false;
-
-    (async () => {
-      await ensureScriptOnce(
-        "https://cdn.zingchart.com/zingchart.min.js",
-        "zingchart-lib-loaded"
-      );
-      if (disposed) return;
-
-      const win = window as any;
-      const zingchart = win.zingchart;
-      const ZC = win.ZC;
-      if (!zingchart || !ZC) return;
-
-      ZC.LICENSE = ["7b185ca19b4be2cba68fdcd369c663a9"];
-
-      const white = "#fff";
-      const transparent = "transparent";
-      const lightPink = "#C3A9C6";
-      const lightBlue = "#53688B";
-
-      const labelsPerson = [
-        "Intellect",
-        "Emotional Stability",
-        "Assertiveness",
-        "Sociable",
-        "Dutifulness",
-        "Self-Confidence",
-        "Sensitivity",
-        "Distrust",
-        "Imagination",
-        "Reserve",
-        "Anxiety",
-        "Complexity",
-        "Self-reliance",
-        "Orderliness",
-        "Emotionality",
-        "Warmth",
-      ];
-      const valuesPerson = [100, 90, 65, 80, 80, 85, 80, 45, 90, 10, 20, 95, 55, 60, 10, 80];
-
-      const labelsTech = ["C++", "HTML", "Javascript", "Node.js", "SQL", "Python", "Java", "CSS"];
-      const valuesTech = [5, 3, 4, 3, 4, 5, 5, 1];
-
-      function baseConfig(kLabels: string[], vMin: number, vMax: number, vStep: number) {
-        return {
-          type: "radar",
-          globals: { fontFamily: "Nunito" },
-          backgroundColor: transparent,
-          gui: { contextMenu: { visible: false }, logo: { visible: false } },
-          logo: { visible: false },
-          legend: { visible: false },
-          plot: { aspect: "area", alphaArea: 0.6 },
-          scaleK: {
-            labels: kLabels,
-            item: { fontColor: white },
-            guide: {
-              lineStyle: "solid",
-              lineColor: white,
-              backgroundColor: transparent,
-            },
-            tick: { lineColor: white },
-          },
-          scaleV: {
-            minValue: vMin,
-            maxValue: vMax,
-            step: vStep,
-            item: { visible: false },
-            guide: {
-              lineStyle: "solid",
-              lineColor: white,
-              backgroundColor: transparent,
-            },
-          },
-        };
-      }
-
-      const chartOneData = baseConfig(labelsPerson, 0, 100, 20);
-      (chartOneData as any).series = [
-        { values: valuesPerson, backgroundColor: lightPink, lineColor: lightPink },
-      ];
-
-      const chartTwoData = baseConfig(labelsTech, 0, 5, 1);
-      (chartTwoData as any).series = [
-        { values: valuesTech, backgroundColor: lightBlue, lineColor: lightBlue },
-      ];
-
-      // Render charts – height controlled via CSS on the containers
-      zingchart.render({
-        id: "chartOne",
-        data: chartOneData,
-        height: "100%",
-        width: "100%",
-      });
-      zingchart.render({
-        id: "chartTwo",
-        data: chartTwoData,
-        height: "100%",
-        width: "100%",
-      });
-
-      function assertOk(cond: boolean, msg: string) {
-        if (!cond) console.error("Test failed:", msg);
-        else console.log("✓", msg);
-      }
-
-      function attachChecks(
-        id: string,
-        cfg: any,
-        color: string,
-        expectLen: number,
-        vMin: number,
-        vMax: number
-      ) {
-        zingchart.bind(id, "complete", function () {
-          try {
-            assertOk(cfg.title === undefined, id + ": No title configured");
-            assertOk(cfg.legend && cfg.legend.visible === false, id + ": Legend hidden");
-            assertOk(
-              Array.isArray(cfg.series) && cfg.series.length === 1,
-              id + ": One series"
-            );
-            assertOk(cfg.series[0].lineColor === color, id + ": Correct color");
-            const el = document.getElementById(id);
-            assertOk(!!el && el.children.length > 0, id + ": Container populated");
-            assertOk(
-              cfg.scaleV.minValue === vMin && cfg.scaleV.maxValue === vMax,
-              id + ": Axis range"
-            );
-            assertOk(
-              cfg.scaleK.labels.length === expectLen &&
-              cfg.series[0].values.length === expectLen,
-              id + ": Labels/values length"
-            );
-          } catch (e) {
-            console.error(id + " assertion error:", e);
-          }
-        });
-      }
-
-      attachChecks("chartOne", chartOneData, lightPink, 16, 0, 100);
-      attachChecks("chartTwo", chartTwoData, lightBlue, 8, 0, 5);
-    })();
-
-    return () => {
-      disposed = true;
-      const win = window as any;
-      const zingchart = win.zingchart;
-      if (zingchart && typeof zingchart.exec === "function") {
-        try {
-          zingchart.exec("chartOne", "destroy");
-          zingchart.exec("chartTwo", "destroy");
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-  }, []);
+  const skills = [
+    { label: "C++", value: 5 },
+    { label: "HTML", value: 3 },
+    { label: "Javascript", value: 4 },
+    { label: "Node.js", value: 3 },
+    { label: "SQL", value: 4 },
+    { label: "Python", value: 5 },
+    { label: "Java", value: 5 },
+    { label: "CSS", value: 1 },
+  ];
 
   return (
     <div>
@@ -1360,13 +1578,13 @@ function RadarCharts() {
   .radar-main {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 16px;
   }
 
   .radar-block {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 8px;
   }
 
   .radar-heading {
@@ -1377,47 +1595,58 @@ function RadarCharts() {
     color: rgba(248, 250, 252, 0.75);
     padding-left: 2px;
     line-height: 1;
-    margin-bottom: -2px;
-  }
-
-  /* Skills header only */
-  .radar-block:last-of-type .radar-heading {
-    margin-bottom: -50px;
-  }
-
-  .radar-section {
-    width: 100%;
-    height: 420px;
-  }
-
-  @media (max-width: 750px) {
-    .radar-section {
-      height: 360px;
-    }
   }
 `}</style>
       <div className="radar-root">
         <div className="radar-main">
-          {/* Top / pink chart */}
+          {/* Personality meter group */}
           <div className="radar-block">
             <div className="radar-heading">Personality</div>
-            <section
-              id="chartOne"
-              className="radar-section"
-              role="img"
-              aria-label="Radar chart with 16 personality traits (pink)"
-            />
+            <div className="mt-3 space-y-2">
+              {personality.map((t) => (
+                <div
+                  key={t.label}
+                  className="flex items-center justify-between gap-3 text-[0.7rem] text-slate-100/90"
+                >
+                  <span className="min-w-0 flex-1 truncate pr-2">{t.label}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-28 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-pink-400 transition-[width] duration-700 ease-out group-hover:w-[var(--pct)]"
+                        style={{ width: `${t.value}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right text-[0.65rem] text-slate-300">{t.value}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Bottom / blue chart */}
-          <div className="radar-block">
+          {/* Skills bar group */}
+          <div className="radar-block mt-6">
             <div className="radar-heading">Skills</div>
-            <section
-              id="chartTwo"
-              className="radar-section"
-              role="img"
-              aria-label="Radar chart with 8 tech skills scored 1–5 (dark blue)"
-            />
+            <div className="mt-3 space-y-2">
+              {skills.map((s) => (
+                <div
+                  key={s.label}
+                  className="flex items-center justify-between gap-3 text-[0.7rem] text-slate-100/90"
+                >
+                  <span className="min-w-0 flex-1 truncate pr-2">{s.label}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-28 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-sky-400 transition-[width] duration-700 ease-out"
+                        style={{ width: `${(s.value / 5) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-6 text-right text-[0.65rem] text-slate-300">
+                      {s.value}/5
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -2083,7 +2312,7 @@ function LongcatWithVideo() {
           position: relative;
           width: 100%;
 
-        margin-top: 11rem;        /* push cat+video down in the About section */
+        margin-top: 0rem;        /* keep cat+video aligned higher in the About section */
         display: flex;
         justify-content: flex-end; /* push content toward the right of the column */
         }
@@ -2096,7 +2325,7 @@ function LongcatWithVideo() {
         font-size: 0.5em;
         margin-left: auto;   /* push cat to the right */
         margin-right: 0;
-        margin-top: 2.5rem;  /* also nudge it lower inside the block */
+        margin-top: -2.5rem;    /* align cat closer to top of section */
         width: 34.5em;
         height: 100%;
         min-height: 24rem;
@@ -2106,7 +2335,6 @@ function LongcatWithVideo() {
 
           /* 👇 extra horizontal + vertical nudge */
         margin-right: -35rem;   /* shifts cat further right */
-        margin-top: 2.5rem;  
         }
 
         /* === CAT PIECES (same as your template, just scoped) === */
@@ -2714,7 +2942,7 @@ function LongcatWithVideo() {
         /* TEMPLATE-STYLE VIDEO, BUT SAFE INSIDE THE COLUMN */
         .longcat-video-wrapper {
         position: absolute;
-        top: 18vh;           /* was 11.5vh – lower on screen */
+        top: 2.5rem;           /* align video much closer to top of the section */
         left: 50%;
         transform: translateX(-50%);
         width: min(60vw, 100%);
@@ -2737,7 +2965,7 @@ function LongcatWithVideo() {
             font-size: 0.45em;
           }
           .longcat-video-wrapper {
-            top: 12vh;
+            top: 2.5rem;
             width: 100%;
             max-width: 600px;
           }
@@ -3016,6 +3244,12 @@ function WhereICanWork() {
 export default function App() {
   const [intro, setIntro] = useState(true);
   const [fading, setFading] = useState(false);
+  const [slidesUrl, setSlidesUrl] = useState<string | null>(null);
+  const [videoMeta, setVideoMeta] = useState<{
+    youtubeUrl: string;
+    githubUrl?: string;
+    title: string;
+  } | null>(null);
 
   // Intro timers
   useEffect(() => {
@@ -3038,9 +3272,90 @@ export default function App() {
     />
   ) : null;
 
+  const slidesOverlay = slidesUrl ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="relative w-full max-w-5xl px-4">
+        <div className="mb-3 flex justify-between items-center text-zinc-100">
+          <h2 className="text-sm font-medium">Slides preview</h2>
+          <div className="flex items-center gap-3 text-xs">
+            <a
+              href={slidesUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 rounded-full bg-zinc-800/80 px-3 py-1 hover:bg-zinc-700/80"
+            >
+              <ExternalLink className="h-3 w-3" /> Open in new tab
+            </a>
+            <button
+              onClick={() => setSlidesUrl(null)}
+              className="rounded-full bg-zinc-800/80 px-3 py-1 hover:bg-zinc-700/80"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        <div className="aspect-video overflow-hidden rounded-2xl bg-black">
+          <iframe
+            src={slidesUrl}
+            title="Project slides"
+            className="h-full w-full border-0"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const videoOverlay = videoMeta ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="relative w-full max-w-5xl px-4">
+        <div className="mb-3 flex items-center justify-between text-zinc-100">
+          <h2 className="text-sm font-medium">{videoMeta.title}</h2>
+          <div className="flex items-center gap-3 text-xs">
+            {videoMeta.githubUrl && (
+              <a
+                href={videoMeta.githubUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-1 rounded-full bg-zinc-800/80 px-3 py-1 hover:bg-zinc-700/80"
+              >
+                <Github className="h-3 w-3" /> Open GitHub in new tab
+              </a>
+            )}
+            <a
+              href={videoMeta.youtubeUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 rounded-full bg-zinc-800/80 px-3 py-1 hover:bg-zinc-700/80"
+            >
+              <ExternalLink className="h-3 w-3" /> Open video in new tab
+            </a>
+            <button
+              onClick={() => setVideoMeta(null)}
+              className="rounded-full bg-zinc-800/80 px-3 py-1 hover:bg-zinc-700/80"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        <div className="aspect-video overflow-hidden rounded-2xl bg-black">
+          <iframe
+            src={videoMeta.youtubeUrl.replace("watch?v=", "embed/")}
+            title={videoMeta.title}
+            className="h-full w-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="dark">
       {overlay}
+      {videoOverlay}
+      {slidesOverlay}
       <a
         href="#content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 rounded bg-indigo-600 px-3 py-2 text-white"
@@ -3078,14 +3393,6 @@ export default function App() {
               </a>
               <a className={NL} href="#contact">
                 Contact
-              </a>
-              <a
-                className="rounded-xl border border-zinc-300 px-3 py-1.5 text-sm font-medium shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700"
-                href={LINKS[0].href}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                Resume
               </a>
             </nav>
           </div>
@@ -3160,7 +3467,46 @@ export default function App() {
 
           <Section id="about" title="About">
             <AboutScroller />
+          </Section>
 
+
+          {/* Projects */}
+          <Section id="projects" title="Projects" hint="Each card is hyperlinked!">
+            <div className="grid gap-5 sm:grid-cols-2">
+              {PROJECTS.map((p) => (
+                <ProjectCard
+                  key={p.title}
+                  p={p}
+                  onOpenSlides={(url) => setSlidesUrl(url)}
+                  onOpenVideo={(meta) => setVideoMeta(meta)}
+                />
+              ))}
+            </div>
+            <div className="mt-10 space-y-4">
+              <div className="radar-heading">Example of classes I teach</div>
+              <div className="aspect-video overflow-hidden rounded-2xl border border-zinc-200 bg-black/80 shadow-sm dark:border-zinc-800">
+                <iframe
+                  src="https://www.youtube.com/embed/Z6TA-gdgPPw?start=12"
+                  title="Example of classes I teach"
+                  className="h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+              <p className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                I teach competitive programming and algorithms to high school students through the
+                USACO Guide team and serve as a TA for competitive programming at the university
+                level. We focus on data structures, optimization, heuristic problem solving, and
+                fast I/O patterns, with a strong emphasis on working through real contest problems
+                together. I currently mentor around 20 students; in the past year, 32 have reached
+                USACO Silver within two months and 15 have progressed to Gold within a year.
+              </p>
+            </div>
+
+            <StackShowcase />
+          </Section>
+
+          <Section id="about" title="About">
             <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start">
               {/* LEFT: stacked Personality + Skills charts */}
               <RadarCharts />
@@ -3170,16 +3516,6 @@ export default function App() {
             </div>
             {/* Where I can Work – still part of About, before Projects */}
             <WhereICanWork />
-          </Section>
-
-
-          {/* Projects */}
-          <Section id="projects" title="Projects" hint="Case studies → outcomes">
-            <div className="grid gap-5 sm:grid-cols-2">
-              {PROJECTS.map((p) => (
-                <ProjectCard key={p.title} p={p} />
-              ))}
-            </div>
           </Section>
 
           {/* Contact */}
